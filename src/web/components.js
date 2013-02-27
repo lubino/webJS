@@ -130,7 +130,7 @@ define([], function () {
                             if (typeof(res) == "string") res = [res];
                             j = res.length;
                             while (j-- > 0) {
-                                if (!this.getResourceModule(res[j]) && !this.arrayContains(allModuleResourcesToLoad, res[j])) allModuleResourcesToLoad.push(res[j]);
+                                //if (!this.getResourceModule(res[j]) && !this.arrayContains(allModuleResourcesToLoad, res[j])) allModuleResourcesToLoad.push(res[j]);
                             }
                         }
                     }
@@ -1158,74 +1158,6 @@ define([], function () {
             var i = arr.length;
             while (i-- > 0) if (arr[i] == item) return true;
             return false;
-        },
-        _r:{},
-        getResourceModule:function (moduleName) {
-            var localizedModules = this._r[this.locale];
-            return localizedModules ? localizedModules[moduleName] : null;
-        },
-        setResourceModule:function (moduleName, resource) {
-            var localizedModules = this._r[resource._locale];
-            if (!localizedModules) {
-                this._r[resource._locale] = localizedModules = {};
-            }
-            localizedModules[moduleName] = resource;
-            var i = this.waitingModuleResources.length;
-            while (i-- > 0) {
-                var item = this.waitingModuleResources[i];
-                if (item && item.keys['_' + moduleName]) {
-                    item.keys['_' + moduleName] = false;
-                    if (item.keys.length-- == 1) {
-                        this.waitingModuleResources[i] = null;
-                        item.callBack(resource);
-                        item = null;
-
-                    }
-                }
-                if (!item && i + 1 == this.waitingModuleResources.length) {
-                    this.waitingModuleResources.pop();
-                }
-            }
-        },
-        /**
-         * returns some resource bundle
-         * @param key
-         */
-        rb:function (key) {
-            var i = key.indexOf('.');
-            if (i == -1) return key;
-            var moduleName = key.substr(0, i);
-            var localizedModules = this._r[this.locale];
-            var rbModule = localizedModules ? localizedModules[moduleName] : null;
-            if (!rbModule) return key;
-            var resource = rbModule[key.substr(i + 1)];
-            return typeof(resource) == "string" ? resource : key;
-        },
-        /**
-         * returns some resource bundle
-         * @param key resource bundle key
-         * @param callback function for result
-         */
-        rbCall:function (key, callback) {
-            var i = key.indexOf('.');
-            if (i == -1) return key;
-            var moduleName = key.substr(0, i), rbKey = key.substr(i + 1);
-            var localizedModules = this._r[this.locale];
-            var rbModule = localizedModules ? localizedModules[moduleName] : null;
-            if (!rbModule) {
-                var keys = {length:1};
-                keys['_' + moduleName] = true;
-                this.waitingModuleResources.push({keys:keys, callBack:function (m) {
-                    var resource = m[rbKey];
-                    callback(typeof(resource) == "string" ? resource : key)
-                }});
-                var locale = this.locale ? '_' + this.locale : "";
-                console.log("Waiting for resource '" + moduleName + "'");
-                this.addJSToDocument(this.document, this.staticURL + "/js/resources/" + moduleName + locale + ".js");
-            } else {
-                var resource = rbModule[rbKey];
-                callback(typeof(resource) == "string" ? resource : key)
-            }
         },
         /**
          * Creates service object for AJAX request

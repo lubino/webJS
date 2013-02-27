@@ -41,10 +41,22 @@ define(['compiler/compile', 'compiler/ConsoleStack'], function (compile, Console
             for (var i=0;i<locales.length;i++) {
                 type = loadAndParse(start+"_"+locales[i]+end, out, cs, runParameters);
             }
-            eval(out.toString());
+            try {
+                eval(out.toString());
+                if (window.console) console.log("Parsed "+url, out.toString());
+            } catch (e) {
+                if (window.console) console.log("Error parsing "+url, {e:e,js:out.toString()});
+                else alert("Error parsing "+url+": "+e);
+            }
         } else {
             type = loadAndParse(url, out, cs, runParameters);
-            eval(out.toString());
+            try {
+                eval(out.toString());
+                if (window.console) console.log("Parsed "+url, out.toString());
+            } catch (e) {
+                if (window.console) console.log("Error parsing "+url, {e:e,js:out.toString()});
+                else alert("Error parsing "+url+": "+e);
+            }
         }
 
         var name = url.substr(0, url.lastIndexOf('.'));

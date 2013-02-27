@@ -11,6 +11,14 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
     var resourceBundle = "Localization.rb";
     var onlyAlphanumericKeys = false;
 
+    function toJSString(s) {
+        var c = ["\t","\n","'", "\\"], cd = ["\\t","\\n","\\'", "\\\\"], l= c.length;
+        while (l-->0) {
+            s = Strings.replace(s, c[l], cd[l]);
+        }
+        return "'"+s+"'";
+    }
+
     function setRunParameters(runParameters) {
         if (runParameters) {
             if (runParameters.createComponentInstance) createComponentInstance = runParameters.createComponentInstance;
@@ -27,7 +35,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
     function appendHtml(/*String*/ html, /*List<String>*/ componentResources) {
         html = Strings.trim(html);
         if (html.length == 0) return "";
-        var /*String*/ htmlJS = PREFFIX + "'" + html.replace("\\", "\\\\").replace("'", "\\'").replace("\t", "\\t").replace("\n", "\\n") + "'";
+        var /*String*/ htmlJS = PREFFIX + toJSString(html);
         htmlJS = JSFunctions.extractSpecialTags(htmlJS, componentResources, "'\n          + " + resourceBundle + "('", "')\n          + '", '\'');
         return htmlJS;
     }
@@ -225,7 +233,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
                                                     var /*int*/ valLength = val.length - 1;
                                                     var /*int*/ nameEnd = val.indexOf('(');
                                                     var /*String*/ componentName = Strings.trim(val.substring(11, nameEnd != -1 ? nameEnd : valLength));
-                                                    js += "component: {name: \"" + componentName + "\"";
+                                                    js += "component: {name: " + toJSString(componentName);
                                                     if (nameEnd != -1) {
                                                         var /*int*/ valEnd = val.lastIndexOf(')');
                                                         if (valEnd == -1)
@@ -379,9 +387,9 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
         }
 
         if (factory != null) out.write(factory);
-        out.write("({\n    componentName: \"");
-        out.write(name.replace("\\", "\\\\").replace("\"", "\\\""));
-        out.write("\",\n    componentResources: ");
+        out.write("({\n    componentName: ");
+        out.write(toJSString(name));
+        out.write(",\n    componentResources: ");
         if (componentResources != null && componentResources.size() > 0) {
             var /*boolean*/ isArray = componentResources.size() > 1;
             var /*String*/ result = isArray ? "[" : "";
@@ -399,9 +407,8 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
             out.write("null");
         }
         if (title != null) {
-            out.write(",\n    title: \"");
-            out.write(title.replace("\\", "\\\\").replace("\"", "\\\""));
-            out.write("\"");
+            out.write(",\n    title: ");
+            out.write(toJSString(title));
         }
         var fs = functions.values();
         for (var f=0; f<fs.length;f++) {
@@ -440,20 +447,22 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
             name = name.substring(0, i);
         }
 
+        out.write('  ');
         if (resource != null) out.write(resource);
-        out.write('("');
-        out.write(name.replace("\\", "\\\\").replace("\"", "\\\""));
-        out.write('", {\n "_locale": "');
-        out.write(locale.replace("\\", "\\\\").replace("\"", "\\\""));
-        out.write('"');
+        out.write('(');
+        out.write(toJSString(name));
+        out.write(', ');
+        out.write(toJSString(locale));
+        out.write(', {');
 
+        var isNotFirst = false;
         var c = ' ';
         while (c != '') {
             c = input.read();
             if (c == '' || c == '\n') {
                 line = Strings.trim(line);
                 if (Strings.startsWith(line,'#')) {
-                    out.write("\n //" +line.substr(1));
+                    out.write("\n    //" +line.substr(1)+"\n    ");
                     line = "";
                 }
                 var /*boolean*/ doIt = line.length > 0;
@@ -474,13 +483,14 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
                             if (onlyAlphanumericKeys) throw "Key of property '" + key + "' must contain only alphanumeric characters!";
                             else useQuotes = true;
                         }
-                    if (useQuotes) out.write(',\n "');
-                    else out.write(',\n ');
+                    if (isNotFirst) out.write(',');
+                    else isNotFirst = true;
+                    if (useQuotes) out.write('\n    "');
+                    else out.write('\n    ');
                     out.write(key);
                     if (useQuotes) out.write('": "');
-                    else out.write(': "');
-                    out.write(value.replace("\\", "\\\\").replace("\"", "\\\""));
-                    out.write('"');
+                    else out.write(': ');
+                    out.write(toJSString(value));
                     line = "";
                 }
                 if (c == '') break;
@@ -489,7 +499,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
             }
         }
 
-        out.write("\n});");
+        out.write("\n  });");
     }
 
     function parseFile(/*String*/ name, /*InputStreamReader*/ input, /*OutputStream*/ out, /*ConsoleStack*/ cs, runParameters) {
@@ -596,17 +606,17 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
         var fnc, depName, dep;
 
         if (type == 1) {
-            dep = '"' + webDir + 'Components", "' + webDir + 'Localization"';
+            dep = toJSString(webDir+"Components")+', '+toJSString(webDir+"Localization");
             depName = "Components, Localization";
             fnc = "function(target, customParameters, callBack) {\n"
-                + "  Components.openPage(\"" + name + "\", target, customParameters, callBack);\n}";
+                + "    Components.openPage(" + toJSString(name) + ", target, customParameters, callBack);\n  }";
         } else if (type == 2) {
-            dep = '"' + webDir + 'localization"';
+            dep = toJSString(webDir+"Localization");
             depName = "Localization";
-            fnc = "function(key) {\n  return Localization.rb(\"" + name + ".\"+key);\n}";
+            fnc = depName+".getterFor(" + toJSString(name) + ");";
         }
 
-        return "define([" + dep + "], function (" + depName + ") {\n" + content + "\n\n\nreturn " + fnc + "\n});";
+        return "define([" + dep + "], function (" + depName + ") {\n" + content + "\n\n  return " + fnc + "\n});";
     }
 
 
@@ -731,6 +741,8 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/JSFunctions'], function (M
         resource: parseResource,
         build: build,
         createImport: createImport,
-        createOutputStream: createOutputStream
+        createOutputStream: createOutputStream,
+        doRequireModule: doRequireModule,
+        author: "Lubos Strapko (https://github.com/lubino)"
     };
 });

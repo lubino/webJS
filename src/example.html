@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8"/>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
+    <title>webJS Compiler</title>
+    <script src="../lib/require.js"></script>
+    <script>
+        function init() {
+            require(['example/component'], function (component) {
+                component();
+            })
+        }
+    </script>
+</head>
+<body onload="init()">
+</body>
+</html>
+

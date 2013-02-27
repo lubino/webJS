@@ -7,67 +7,177 @@
     <script src="../lib/require.js"></script>
     <script>
 
-        function createImport(s) {
-            var i = 0, j= s.length;
-            return {
-                read: function () {
-                    return i<j ? s.charAt(i++) : '';
-                }
-            };
+        function save(name, input) {
+            if (window.localStorage) {
+                localStorage.setItem("webJSlastName", name);
+                localStorage.setItem("webJSlastInput", input);
+            }
         }
 
-        function createOutputStream(arr) {
-            return {
-                write: function (s) {
-                    arr.push(s);
-                }
-            };
+        function setFields(name, input) {
+            document.getElementById("name").value = name;
+            document.getElementById("input").value = input;
         }
+
+        function fromLS() {
+            if (window.localStorage) {
+                setFields(localStorage.getItem("webJSlastName"), localStorage.getItem("webJSlastInput"));
+            }
+
+        }
+
+
 
         function doIt() {
             require(['compiler/compile', 'compiler/ConsoleStack'], function (compiler, ConsoleStack) {
-                var outArr = [];
-
                 function log(a, b) {
                     console.log(a, b)
                 }
 
+                var value = document.getElementById('input').value;
                 var /*String*/ name = document.getElementById("name").value,
-                /*InputStreamReader*/ input = createImport(document.getElementById('input').value),
-                        out = createOutputStream(outArr),
+                /*InputStreamReader*/ input = compiler.createImport(value),
+                        out = compiler.createOutputStream(),
                 /*ConsoleStack*/ cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
+                save(name, value);
+                var result = "";
                 try {
-                    compiler.file(name, input, out, cs);
+                    var type = compiler.file(name, input, out, cs);
+                    result = compiler.doRequireModule(name, 'web/', type, out.toString());
                 } catch (e) {
+                    result += e;
                     log("Exception:", e);
                     alert(e);
                 }
-                var outString = outArr.join('');
-                document.getElementById('output').value = outString;
+                document.getElementById('output').value = result;
             });
         }
+
+        var isIE = '\v' == 'v' ? parseFloat(navigator.appVersion.split("MSIE")[1]) : false,
+                isSafari = navigator.userAgent.indexOf("Safari")!=-1,
+                isOpera=navigator.userAgent.indexOf("Opera")!=-1;
+
+        function getWindowSize() {
+            var doc = document;
+            var mode = doc.compatMode;
+            var width;
+            if (mode || isIE) { // IE, Gecko, Opera
+                width = (mode == 'CSS1Compat') ?
+                        doc.documentElement.clientWidth : // Standards
+                        doc.body.clientWidth; // Quirks
+            } else width = self.innerWidth;  // Safari
+            var height;
+            if ((mode || isIE) && !isOpera) { // IE, Gecko
+                height = (mode == 'CSS1Compat') ?
+                        doc.documentElement.clientHeight : // Standards
+                        doc.body.clientHeight; // Quirks
+            } else height = self.innerHeight; // Safari, Opera
+            return [width, height];
+        }
+
+
+        function resize() {
+            var size = getWindowSize();
+            var styleInput = document.getElementById("input").style;
+            var styleOutput = document.getElementById("output").style;
+            var styleControl = document.getElementById("control").style;
+            var styleName = document.getElementById("name").style;
+            var fileButton = document.getElementById("fileButton");
+            var styleFile = document.getElementById("file").style;
+            var halfWidth = Math.round(size[0]/2-30);
+            var halfHeight = Math.round(size[1]-80);
+
+            styleName['width'] = halfWidth+"px";
+
+            styleOutput['width']=styleInput['width']=halfWidth+"px";
+            styleOutput['height']=styleInput['height']=halfHeight+"px";
+
+            styleInput['left']=15+"px";
+            styleOutput['top']=styleInput['top']=15+"px";
+            styleOutput['left']=halfWidth+40+"px";
+
+            styleControl['left']=20+"px";
+            styleControl['top']=halfHeight+30+"px";
+
+            styleFile['left']=fileButton.offsetLeft+"px";
+            styleFile['width']=fileButton.offsetWidth+"px";
+        }
+
+        function init() {
+            resize();
+            window.addEventListener("resize", resize);
+            fromLS();
+
+            var file = document.getElementById('file');
+            if (file) {
+                file.disabled = false;
+            }
+
+            function fileContent(fileStr) {
+                name = document.getElementById("file").value;
+                setFields(name,fileStr);
+                doIt();
+            }
+
+            function fileChange() {
+                if (!file) {
+                    return true;
+                }
+                if (!file.files) {
+                    alert("Your browser doesn't support reading files; try Firefox, Chrome or Safari.");
+                    file.disabled = true;
+                    return false;
+                }
+                if (file.files.length == 0) {
+                    return true;
+                }
+                var f = file.files[0];
+                if (window.FileReader) { // HTML5/Chrome way
+                    var r = new FileReader();
+                    r.onloadend = function () {
+                        fileContent(r.result);
+                    };
+                    r.readAsBinaryString(f);
+                } else if (f.getAsBinary) { // custom Firefox way
+                    var derStr = f.getAsBinary();
+                    fileContent(derStr);
+                } else {
+                    alert("Your browser doesn't support reading files; try Firefox, Chrome or Safari.");
+                    file.disabled = true;
+                    return false;
+                }
+                return true;
+            }
+            file.onchange = fileChange;
+
+            function tick() {
+                if (fileChange()) window.setTimeout(function () {
+                    tick();
+                }, 500);
+            }
+
+
+        }
+        function fileClick() {
+            alert("Not supported");
+        }
+
     </script>
     <style>
-        textarea {
-            width: 90%;
-            height: 300px;
-            margin: auto;
+        .flow {
+            position: absolute;
         }
     </style>
 </head>
-<body>
-<textarea id="input">
-    bu00125=Přihlašuji se poprvé
-    bu6863=Vybrat certifikát
-    bu6864=Cesta k poslednímu přidanému certifikátu:
-    bu6865=Žádost o certifikát čeká na autorizaci.
-    bu6866=Probíhá stažení certifikátu.
-    bu6867=Stažení certifikátu dokončeno.
-</textarea>
-<div>
-   Filename: <input type="text" value="test.properties" style="width: 300px" id="name"><button onclick="doIt()">convert to JS</button>
+<body onload="init()">
+<textarea id="input" class="flow"></textarea>
+<div id="control" class="flow">
+    <button onclick="fromLS()">Last</button>
+    <button id="fileButton" onclick="fileClick()" style="z-index: 1">Load from file</button>
+    <input type="file" id="file" class="flow" style="z-index: 100;opacity: 0.01">
+   Filename: <input type="text" style="width: 300px" id="name"><button onclick="doIt()">convert to JS</button>
 </div>
-<textarea id="output"></textarea>
+<textarea id="output" class="flow"></textarea>
 </body>
 </html>
 

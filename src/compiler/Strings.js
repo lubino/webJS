@@ -1,8 +1,13 @@
 define([],function () {
 
     function replace(s, searchvalue, newValue){
-        var i=0;
-        while ((i=s.indexOf(searchvalue,i))!=-1) s = s.replace(searchvalue, newValue);
+        var i= 0, len1 = searchvalue.length, len2 = newValue.length;
+        while ((i=s.indexOf(searchvalue,i))!=-1) {
+            var b = i>1 ? s.substr(0, i) : "";
+            var e = i+len1<s.length ? s.substr(i+len1) : "";
+            s = b+newValue+e;
+            i += len2;
+        }
         return s;
     }
 
