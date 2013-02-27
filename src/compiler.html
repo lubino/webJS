@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8"/>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
+    <title>webJS Compiler</title>
+    <script src="../lib/require.js"></script>
+    <script>
+
+        function createImport(s) {
+            var i = 0, j= s.length;
+            return {
+                read: function () {
+                    return i<j ? s.charAt(i++) : '';
+                }
+            };
+        }
+
+        function createOutputStream(arr) {
+            return {
+                write: function (s) {
+                    arr.push(s);
+                }
+            };
+        }
+
+        function doIt() {
+            require(['compiler/compile', 'compiler/ConsoleStack'], function (compiler, ConsoleStack) {
+                var outArr = [];
+
+                function log(a, b) {
+                    console.log(a, b)
+                }
+
+                var /*String*/ name = document.getElementById("name").value,
+                /*InputStreamReader*/ input = createImport(document.getElementById('input').value),
+                        out = createOutputStream(outArr),
+                /*ConsoleStack*/ cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
+                try {
+                    compiler.file(name, input, out, cs);
+                } catch (e) {
+                    log("Exception:", e);
+                    alert(e);
+                }
+                var outString = outArr.join('');
+                document.getElementById('output').value = outString;
+            });
+        }
+    </script>
+    <style>
+        textarea {
+            width: 90%;
+            height: 300px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+<textarea id="input">
+    bu00125=Přihlašuji se poprvé
+    bu6863=Vybrat certifikát
+    bu6864=Cesta k poslednímu přidanému certifikátu:
+    bu6865=Žádost o certifikát čeká na autorizaci.
+    bu6866=Probíhá stažení certifikátu.
+    bu6867=Stažení certifikátu dokončeno.
+</textarea>
+<div>
+   Filename: <input type="text" value="test.properties" style="width: 300px" id="name"><button onclick="doIt()">convert to JS</button>
+</div>
+<textarea id="output"></textarea>
+</body>
+</html>
+
