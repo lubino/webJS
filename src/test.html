@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
+    <title>webJS example</title>
+    <script src="../lib/require.js"></script>
+    <script>
+
+        var runParameters={
+            webDir: "web/"
+        };
+
+        function load(fileName, callback) {
+            var xmlhttp = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState == 4 && (xmlhttp.status == 200 || xmlhttp.status == 0)) {
+                    callback(xmlhttp.responseText);
+                }
+            };
+            xmlhttp.open("GET", fileName, true);
+            xmlhttp.send();
+
+        }
+
+        require(['compiler/HtmlParser', 'compiler/DependenciesMapper', 'compiler/InputStream', 'compiler/ConsoleStack', 'compiler/Strings'],function (HtmlParser, DependenciesMapper, InputStream, ConsoleStack, Strings){
+            var e = document.getElementById("console");
+            var cs = new ConsoleStack(null,null,null,null,null,{log:function (d, s) {
+                e.innerHTML+='<br>'+ d+Strings.replace(Strings.replace(s,'<',"&lt;"),'>',"&gt;").replace("___.",'<span style="color:red">').replace(".___",'</span>')
+            }});
+
+            var names = ["test/parseHtml1"];var i = names.length;
+            while (i-->0){
+                var name = names[i];
+                load(name+".html", function (content) {
+                    var dependencies = new DependenciesMapper();
+                    var out = new HtmlParser(name, dependencies, runParameters).parse(new InputStream(content), cs);
+                console.log("define(['"+dependencies.modules().slice(1).join("', '")+"'],\n"+out+"\n);");
+            });
+            }
+
+        });
+    </script>
+</head>
+<body>
+<div id="console" style="text-align: left;font-family: Monaco, Menlo, 'Ubuntu Mono', 'Droid Sans Mono', Consolas, monospace;
+font-size: 12px;background: white;border: #1e90ff solid 2px;"></div>
+</body>
+</html>

@@ -60,7 +60,7 @@ define([], function () {
          * @param factory factory
          */
         registerComponentFactory:function (factory) {
-            if (typeof factory == "function") factory = factory(this);
+            if (typeof factory == "function" && !factory.componentName) factory = factory(this);
             var name = factory.componentName;
             this.componentFactories[name] = factory;
             var arr = this.waitingComponentFactories[name];

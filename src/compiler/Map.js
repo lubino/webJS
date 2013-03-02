@@ -1,5 +1,9 @@
 define([],function () {
 
+    /**
+     * Map
+     * @constructor Map
+     */
     function Map() {
 
         var map = {};

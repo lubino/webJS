@@ -5,51 +5,52 @@
     <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
     <title>webJS Compiler</title>
     <script src="../lib/require.js"></script>
+    <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
     <script>
 
         function save(name, input) {
             if (window.localStorage) {
-                localStorage.setItem("webJSlastName", name);
-                localStorage.setItem("webJSlastInput", input);
+                localStorage.setItem("web_parser_lastName", name);
+                localStorage.setItem("web_parser_lastInput", input);
             }
         }
 
         function setFields(name, input) {
             document.getElementById("name").value = name;
-            document.getElementById("input").value = input;
+            loader(input);
         }
 
         function fromLS() {
             if (window.localStorage) {
-                setFields(localStorage.getItem("webJSlastName"), localStorage.getItem("webJSlastInput"));
+                setFields(localStorage.getItem("web_parser_lastName"), localStorage.getItem("web_parser_lastInput"));
             }
 
         }
 
+        function getter() {
+            return document.getElementById('input').value;
+        }
+
+        function loader(s) {
+            document.getElementById('input').value = s;
+        }
+
+        function js() {
+            return document.getElementById('output').value;
+        }
+
+        function setter(s) {
+            document.getElementById('output').value = s;
+        }
 
 
         function doIt() {
-            require(['compiler/compile', 'compiler/ConsoleStack'], function (compiler, ConsoleStack) {
-                function log(a, b) {
-                    console.log(a, b)
-                }
+            var value = getter();
+            var /*String*/ name = document.getElementById("name").value;
+            save(name, value);
 
-                var value = document.getElementById('input').value;
-                var /*String*/ name = document.getElementById("name").value,
-                /*InputStreamReader*/ input = compiler.createImport(value),
-                        out = compiler.createOutputStream(),
-                /*ConsoleStack*/ cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
-                save(name, value);
-                var result = "";
-                try {
-                    var type = compiler.file(name, input, out, cs);
-                    result = compiler.doRequireModule(name, 'web/', type, out.toString());
-                } catch (e) {
-                    result += e;
-                    log("Exception:", e);
-                    alert(e);
-                }
-                document.getElementById('output').value = result;
+            require(['parse'], function (parse) {
+                setter(parse.toString(name, value));
             });
         }
 
@@ -75,32 +76,134 @@
             return [width, height];
         }
 
-
-        function resize() {
-            var size = getWindowSize();
+        function resizeLeftRight(size) {
             var styleInput = document.getElementById("input").style;
             var styleOutput = document.getElementById("output").style;
             var styleControl = document.getElementById("control").style;
             var styleName = document.getElementById("name").style;
             var fileButton = document.getElementById("fileButton");
             var styleFile = document.getElementById("file").style;
-            var halfWidth = Math.round(size[0]/2-30);
-            var halfHeight = Math.round(size[1]-80);
+            var w = Math.round(size[0]/2-30);
+            var h = Math.round(size[1]-70);
 
-            styleName['width'] = halfWidth+"px";
+            styleName['width'] = (400 < w ? 450 : 2*w-350)+"px";
 
-            styleOutput['width']=styleInput['width']=halfWidth+"px";
-            styleOutput['height']=styleInput['height']=halfHeight+"px";
+            styleOutput['width']=styleInput['width']=w+"px";
+            styleOutput['height']=styleInput['height']=h+"px";
 
             styleInput['left']=15+"px";
             styleOutput['top']=styleInput['top']=15+"px";
-            styleOutput['left']=halfWidth+40+"px";
+            styleOutput['left']=w+40+"px";
 
+            styleControl['width']=2*w+"px";
             styleControl['left']=20+"px";
-            styleControl['top']=halfHeight+30+"px";
+            styleControl['top']=h+30+"px";
 
             styleFile['left']=fileButton.offsetLeft+"px";
             styleFile['width']=fileButton.offsetWidth+"px";
+        }
+
+        function resizeUpTop(size) {
+            var styleInput = document.getElementById("input").style;
+            var styleOutput = document.getElementById("output").style;
+            var styleControl = document.getElementById("control").style;
+            var styleName = document.getElementById("name").style;
+            var fileButton = document.getElementById("fileButton");
+            var styleFile = document.getElementById("file").style;
+            var w = Math.round(size[0]/2-18);
+            var h = Math.round(size[1]/2-40);
+
+            styleName['width'] = (400 < w ? 450 : 2*w-350)+"px";
+
+            styleOutput['width']=styleInput['width']=2*w+"px";
+            styleOutput['height']=styleInput['height']=h+"px";
+
+            styleInput['left']=15+"px";
+            styleInput['top']=15+"px";
+            styleOutput['top']=60+h+"px";
+            styleOutput['left']=15+"px";
+
+            styleControl['width']=2*w+"px";
+            styleControl['left']=20+"px";
+            styleControl['top']=h+30+"px";
+
+            styleFile['left']=fileButton.offsetLeft+"px";
+            styleFile['width']=fileButton.offsetWidth+"px";
+        }
+
+        function resize() {
+            var size = getWindowSize();
+            if (size[0]/size[1]>1.25) resizeLeftRight(size);
+            else resizeUpTop(size);
+        }
+
+        var editors = [];
+
+        function replace(id, type) {
+            var i = document.getElementById(id);
+            var value = i.value;
+            var div = document.createElement("div");
+            div.className = "flow";
+            i.parentNode.insertBefore(div, i);
+            i.parentNode.removeChild(i);
+            div.id=id;
+            var editor = ace.edit(id);
+            editor.getSession().setMode("ace/mode/"+type);
+            editor.setValue(value, 1);
+            editors.push(editor);
+
+            var exec = null;
+            var tab = null;
+
+            if (id == "input") {
+                window.getter = function () {
+                    return editor.getValue();
+                };
+                window.loader = function (s) {
+                    return editor.setValue(s, 1);
+                };
+                exec = function(editor) {
+                    doIt();
+                };
+                tab = function(editor) {
+                    editors[1].focus();
+                }
+            } else if (id == "output") {
+                window.js = function () {
+                    return editor.getValue();
+                };
+                window.setter = function (s) {
+                    editor.setValue(s, 1);
+                    editor.focus();
+                };
+                exec = function(editor) {
+                    run();
+                };
+                tab = function(editor) {
+                    editors[0].focus();
+                }
+            }
+
+            if (exec) editor.commands.addCommand({
+                name: 'execute',
+                bindKey: {win: 'Ctrl-Return',  mac: 'Command-Return'},
+                exec: exec,
+                readOnly: true // false if this command should not apply in readOnly mode
+            });
+            if (tab) editor.commands.addCommand({
+                name: 'tab',
+                bindKey: {win: 'Shift-Tab',  mac: 'Shift-Tab'},
+                exec: tab,
+                readOnly: true // false if this command should not apply in readOnly mode
+            });
+        }
+
+        function aceTheme() {
+            var theme = document.getElementById("theme").value;
+            var i = editors.length;
+            while (i-->0)
+            editors[i].setTheme("ace/theme/"+theme);
+            localStorage.setItem("web_parser_lastAceTheme", theme);
         }
 
         function init() {
@@ -108,15 +211,35 @@
             window.addEventListener("resize", resize);
             fromLS();
 
+            if (window.ace) {
+                document.getElementById("theme").value = localStorage.getItem("web_parser_lastAceTheme");
+                replace("input", "html");
+                replace("output", "javascript");
+                aceTheme();
+                resize();
+                editors[0].focus();
+            } else {
+                document.getElementById("theme").style.display = "none";
+            }
+
+            document.getElementById("name").onkeyup = function (event) {
+                if (event && event.keyCode==13) doIt();
+            };
+
+            doIt();
+
             var file = document.getElementById('file');
             if (file) {
                 file.disabled = false;
             }
 
             function fileContent(fileStr) {
-                name = document.getElementById("file").value;
+                var name = document.getElementById("file").value;
+                if (name.indexOf('\\')!=-1) name = name.substr(name.lastIndexOf('\\')+1);
+                if (name.indexOf('/')!=-1) name = name.substr(name.lastIndexOf('/')+1);
                 setFields(name,fileStr);
                 doIt();
+                file.value = null;
             }
 
             function fileChange() {
@@ -158,24 +281,53 @@
 
 
         }
+
+
         function fileClick() {
             alert("Not supported");
+        }
+
+        function run() {
+            try {
+                console.log(eval(js()));
+            } catch (e) {
+                console.log("Evaluation ERROR:", e);
+                alert(e);
+                throw e;
+            }
         }
 
     </script>
     <style>
         .flow {
             position: absolute;
+            text-align: left;
+        }
+        #input, #output {
+            background: white;
+            border: #708dcc 2px solid;
+            border-radius: 2px;
         }
     </style>
 </head>
 <body onload="init()">
 <textarea id="input" class="flow"></textarea>
 <div id="control" class="flow">
-    <button onclick="fromLS()">Last</button>
-    <button id="fileButton" onclick="fileClick()" style="z-index: 1">Load from file</button>
+
+    <select id="theme" onchange="aceTheme()">
+        <option>chrome</option> <option>textmate</option> <option>eclipse</option> <option>xcode</option> <option>monokai</option>
+        <option>clouds</option> <option>ambiance</option> <option>tomorrow</option> <option>twilight</option> <option>dawn</option>
+        <option>chaos</option>
+    </select>
+
+    <button id="fileButton" onclick="fileClick()" style="z-index: 1">from file</button>
+
     <input type="file" id="file" class="flow" style="z-index: 100;opacity: 0.01">
-   Filename: <input type="text" style="width: 300px" id="name"><button onclick="doIt()">convert to JS</button>
+
+   Filename: <input type="text" style="width: 300px" id="name"><button onclick="doIt()">parse to JS</button>
+
+    <button onclick="run()">eval</button>
+
 </div>
 <textarea id="output" class="flow"></textarea>
 </body>

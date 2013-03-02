@@ -1,4 +1,4 @@
-define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/ServerRequest'], function (Map, String, MetaFunction, ServerRequest) {
+define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/ServerRequest', 'compiler/ItemDefinition'], function (Map, Strings, MetaFunction, ServerRequest, ItemDefinition) {
 
 
     function JavaDocStack(/*String*/ javaDoc, /*ConsoleStack*/ cs) {
@@ -15,7 +15,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
             var c = ' ';
             while (s<l && (c=line.charAt(s))==' ') s++;
             if (cs && c!='*') {
-                cs.addError("Wrong JavaDoc format '"+String.trim(line)+"', line must start with '*' symbol.");
+                cs.addError("Wrong JavaDoc format '"+Strings.trim(line)+"', line must start with '*' symbol.");
             }
             if (c=='*') {
                 s++;
@@ -29,24 +29,24 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
                 while (s<l && line.charAt(s)>32) s++;
                 if (!paramsMap) paramsMap = new Map();
                 var /*String*/ key = line.substring(a, s);
-                if (paramsMap.put(key, String.trim(line.substring(s)))!=null && cs != null) {
+                if (paramsMap.put(key, Strings.trim(line.substring(s)))!=null && cs != null) {
                     cs.addError("Only one JavaDoc '@param "+key+"' tag is supported.");
                 }
             } else if (line.indexOf("@return ",s)==s) {
                 s+=8;
                 if (returns != null && cs != null) {
-                    cs.addError("Wrong JavaDoc format '"+String.trim(line)+"', only one '@return' tag is supported.");
+                    cs.addError("Wrong JavaDoc format '"+Strings.trim(line)+"', only one '@return' tag is supported.");
                 }
-                returns = String.trim(line.substring(s));
+                returns = Strings.trim(line.substring(s));
             } else if (line.indexOf("@throws ",s)==s) {
                 s+=8;
                 while (s<l && line.charAt(s)==' ') s++;
                 var /*int*/ b=s;
                 while (s<l && line.charAt(s)>32) s++;
                 if (throwsMap == null) throwsMap = new Map();
-                throwsMap.put(line.substring(b, s), String.trim(line.substring(s)));
+                throwsMap.put(line.substring(b, s), Strings.trim(line.substring(s)));
             } else {
-                var /*String*/ descriptionLine = String.trim(line.substring(s));
+                var /*String*/ descriptionLine = Strings.trim(line.substring(s));
                 if (descriptionLine.length>0) {
                     if (!description) description = descriptionLine;
                     else description += " "+descriptionLine;
@@ -62,11 +62,11 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
 
 
     function logError(e) {
-        if (this.logger) this.logger.log("Error:", e);
+        if (this.logger) this.logger.log("Parser ERROR:", e);
     }
 
     function log(e) {
-        if (this.logger) this.logger.log("Info:", e);
+        if (this.logger) this.logger.log("Parser info:", e);
     }
 
     function isString(/*String*/ key) {
@@ -79,13 +79,12 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
     var /*String*/ PARAMETRIC_PAGE = "parametricPage";
     var /*String*/ PARAMETRIC_CALL = "parametricCall";
     var /*String*/ DYNAMIC_PAGES = "dynamicPages";
-    var /*DateFormat*/ DATE_FORMAT = "HH:mm:ss";
 
     function ConsoleStack(/*IOutputStreamCreator*/ osc, /*File*/ verbose, /*String*/ outputCharset, /*String*/ control, /*Boolean*/ silent, logger) {
 
 
         this.errors = null;
-        this.file = null;
+        this.fileName = null;
         this.files = null;
         this.silent = silent;
         this.osc=osc;
@@ -101,24 +100,34 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
         if (control != null) {
             var split = control.split(",");
             for (var i=0;i<split.length;i++) {
-                this.isError.add(String.trim(split[i]));
+                this.isError.add(Strings.trim(split[i]));
             }
         }
     }
 
-    function addFunction(/*String*/ name, /*String*/ parameters, /*String*/ jsBody, /*JavaDocStack*/ jds) {
+    function addFunction(/*String*/ name, /*String[]*/ functionParameters, /*String*/ jsBody, /*JavaDocStack*/ jds) {
         if (!this.silent) {
-            if (jsBody != null) this.log("Adding function '" + name + parameters + "'.");
-            else this.log("Adding empty function '" + name + parameters + "'.");
+            if (jsBody != null) {
+                var shrt = Strings.removeWhiteSpaces(jsBody);
+                this.log("function " + name + "("+ functionParameters.join(", ") + ") {"+(shrt.length>200 ? shrt.substr(0,200)+'...' : shrt)+"}");
+            } else this.log("Accepting empty function " + name + "("+ functionParameters.join(", ") + ") {}");
         }
+        if (name == "beforeCreate") {
+            if (functionParameters.length != 2 || functionParameters[0]=='instance')
+                this.addError("Function 'beforeCreate' must have 2 function parameters (parameters, callBack) instead of ("+functionParameters.join(", ")+")!");
+            if (!jsBody || jsBody.indexOf(functionParameters[1]+'()')==-1)
+                this.addError("Function 'beforeCreate' must invoke 2nd function parameter '"+functionParameters[1]+"()' to run callback function!");
+        } else if (name == "afterCreate") {
+            if (functionParameters.length > 1 || functionParameters[0]=='parameters')
+                this.addError("Function 'afterCreate' must have one function parameter (instance) instead of ("+functionParameters.join(", ")+")!");
+        } else if (name == "extendInstance") {
+            if (functionParameters[0]=='instance')
+                this.addError("Function 'extendInstance' with first function parameter instance is not allowed!");
+        }
+
         if (this.item != null) {
-            if (jds == null && isError.contains("doc")) this.addError("JavaDoc for function '" + name + "' is missing.");
-            if (this.item.functions == null) this.item.functions = [];
-            var /*String*/ substring = String.trim(parameters.substring(1, parameters.length - 1));
-            var /*String[]*/ functionParameters = substring.length > 0 ? substring.split(",") : [];
-            for (var i = 0; i < functionParameters.length; i++) {
-                functionParameters[i] = String.trim(functionParameters[i]);
-            }
+            if (jds == null && this.isError.contains("doc")) this.addError("JavaDoc for function '" + name + "' is missing.");
+            if (this.item.functions == null) this.item.functions = new Map();
             var /*String*/ description = null;
             var /*String[]*/ parametersDescription = null;
             var /*String*/ returns = null;
@@ -162,14 +171,16 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
         this.started = new Date().getTime();
     }
 
+    function addWarning(/*String*/ e) {
+        this.logError(e);
+    }
+
     function addError(/*String*/ e) {
         this.logError(e);
-        if (this.item != null) {
-            if (this.item.errors == null) this.item.errors = new Map();
-            this.item.errors.add(e);
-        }
         if (this.errors == null) this.errors = new Map();
-        if (!this.errors.contains(this.file)) this.errors.add(this.file);
+        if (!this.errors.containsKey(this.item.name)) this.errors.put(this.item.name, this.item);
+        if (this.item.errors == null) this.item.errors = new Map();
+        this.item.errors.add(e);
     }
 
     function addItem(/*String*/ name, /*String*/ parameters) {
@@ -289,17 +300,21 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
                 description = "unknown";
         }
         this.log("Rendering " + description + ": " + name + (newFile != null ? " (" + newFile + ")" : ""));
-        this.file = newFile;
+        this.fileName = newFile;
         if (dir != null) {
             this.saveItem();
-            this.item = compiler.createItemDefinition(name, type);
+            this.item = new ItemDefinition(name, type);
         }
     }
 
-    function skipping(/*String*/ name, /*String*/ newFile, /*int*/ type) {
+    function startItem(name, type) {
+        this.item = new ItemDefinition(name, type);
+    }
+
+    function skipping(/*String*/ fileName, /*String*/ newFile, /*int*/ type) {
         this.saveItem();
-        this.addFile(name, type);
-        this.file = newFile;
+        this.addFile(fileName, type);
+        this.fileName = newFile;
         if (!this.silent) this.log("Skipping (file not modified): " + newFile);
     }
 
@@ -323,12 +338,28 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
         addError(""+e);
     }
 
+    function collectErrors(errors) {
+        var result = '';
+        var items = errors ? errors.values() : null;
+        if (items) for (var i = 0; i < items.length;i++) {
+            if (result) result += '\n  also ';
+            result += items[i].name+': ';
+            var keys = items[i].errors.keys();
+            for (var l=0;l<keys.length;l++) {
+                result += '\n    '+keys[l];
+            }
+        }
+        return result;
+    }
+
     function end(/*boolean*/ canEnd) {
+        var now = new Date().getTime();
+        this.log("Duration "+(now-this.started)/1000+"s");
         if (this.dir != null) {
             this.saveItem();
         }
         if (this.errors != null) {
-            var /*String*/ message = "There are some error in " + this.errors.size() + " file(s)";
+            var /*String*/ message = "Can't parse " + collectErrors(this.errors);
             this.errors = null;
             if (canEnd) throw message;
             else this.logError(message);
@@ -343,12 +374,11 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
     }
 
     function moduleFunction(/*String*/ className, /*String*/ name, /*Class[]*/ paramTypes, /*MetaFunction*/ metaFunction) {
-        var /*String*/ parameters = "";
-        for (var i=0;i<paramTypes.length; i++) {
+        var /*String[]*/ parameters = [], i;
+        for (i=0;i<paramTypes.length; i++) {
             var /*String*/ docName = paramTypes[i].getName();
-            parameters += parameters.length > 0 ? ", " + docName : docName;
+            parameters.push(docName);
         }
-        parameters = "(" + parameters + ")";
         var /*JavaDocStack*/ jds = null;
         var /*String*/ body = null;
         if (metaFunction != null) {
@@ -356,15 +386,13 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
             var /*String*/ jD = "/**";
             if (metaFunction.description != null) jD += "\n * " + metaFunction.description;
             if (metaFunction.parameters != null) {
-                parameters = "";
-                for (var i=0;i<metaFunction.parameters.length;i++) {
+                parameters = [];
+                for (i=0;i<metaFunction.parameters.length;i++) {
                     var parameter = metaFunction.parameters[i];
-                    if (parameters.length == 0) parameters = parameter;
-                    else parameters += ", " + parameter;
+                    parameters.push(parameter);
                     if (metaFunction.parametersDescription != null)
                         jD += "\n * @param " + parameter + " " + metaFunction.parametersDescription[i];
                 }
-                parameters = "(" + parameters + ")";
             }
             if (metaFunction.returns != null) jD += "\n * @return " + metaFunction.returns;
             jD += "\n */";
@@ -373,9 +401,8 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
         this.addFunction(name, parameters, className + "#" + body, jds);
     }
 
-
-
     ConsoleStack.prototype.addError = addError;
+    ConsoleStack.prototype.addWarning = addWarning;
     ConsoleStack.prototype.start = start;
     ConsoleStack.prototype.addItem = addItem;
     ConsoleStack.prototype.render = render;
@@ -393,6 +420,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
     ConsoleStack.prototype.saveFile = saveFile;
     ConsoleStack.prototype.logError = logError;
     ConsoleStack.prototype.log = log;
+    ConsoleStack.prototype.startItem = startItem;
 
     ConsoleStack.JavaDocStack = JavaDocStack;
 

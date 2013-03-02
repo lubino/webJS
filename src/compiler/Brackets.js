@@ -5,18 +5,18 @@ define([], function () {
     var /*String[]*/ endings = ['}', ']', ')'];
 
     function isStarting(c) {
-        var i=startings.length;
-        while (i-->0) {
-            if (startings[i]==c) return true;
-        }
-        return false;
+        return c=='{' || c== '[' || c== '(';
     }
     function isEnding(c) {
-        var i=endings.length;
-        while (i-->0) {
-            if (endings[i]==c) return true;
+        return c=='}' || c== ']' || c== ')';
+    }
+    function endingTo(c) {
+        switch (c) {
+            case '{': return '}';
+            case '[': return ']';
+            case '(': return ')';
         }
-        return false;
+        return null;
     }
 
     function Brackets(/*String 1*/ starting, /*String 1*/ ending, /*int*/ start, /*int*/ end, /*int[]*/ comas) {
@@ -67,6 +67,33 @@ define([], function () {
         return new Bracket(-1, null);
     }
 
+    function _findEndingBracketInput(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        var /*String[]*/ level = [endingTo(type)];
+        var length = level.length;
+        var /*Array*/ result = null;
+        var lastType = '';
+        var c;
+
+        while (c = input.read()) {
+            if (isStarting(c)) {
+                lastType = endingTo(c);
+                level.push(lastType);
+            } else if (c == lastType) {
+                level.pop();
+                length = level.length;
+                if (length==0) {
+                    return new Bracket(input.getPosition(), result);
+                }
+                lastType = level[length-1];
+            } else if (c==',' && length == 1) {
+                if (!result) result = [];
+                result.push(input.getPosition());
+            }
+        }
+        throw "Can't find ending bracket to '"+input.errorAt(start)+"'";
+    }
+
     function Bracket(/*int*/ end, /*Array*/ result) {
         this.end = end; //index of bracket
         var comas; // indexes of comas
@@ -110,8 +137,19 @@ define([], function () {
         return  null;
     }
 
+    /**
+     * finds ending bracket of typy 'type'
+     * @param input
+     * @param type
+     */
+    function findEnd(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        return type+input.cutString(start, _findEndingBracketInput(input, type).end);
+    }
+
     Brackets.findEndingBracket = findEndingBracket;
     Brackets.findFirst = findFirst;
+    Brackets.findEnd = findEnd;
 
     return Brackets;
 });

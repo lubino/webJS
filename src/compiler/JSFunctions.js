@@ -5,12 +5,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
     var /*int*/ KEYWORD_LEN = KEYWORD.length;
 
 
-    function trimOne(/*String*/ s) {
-        return s.substring(1, s.length - 1);
-    }
-
-
-    function JSFunctions(/*String*/ name, /*String*/ parameters, /*String*/ body, /*String*/ javaDoc) {
+    function JSFunctions(/*String*/ name, /*String[]*/ parameters, /*String*/ body, /*String*/ javaDoc) {
         this.name = name;
         this.parameters = parameters;
         this.body = body;
@@ -27,18 +22,18 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
         }
         var /*int*/ start = position;
         while (position < length && !isSpace(js.charAt(position))) position++;
-        var /*int*/ end = position;
+        var /*int*/ actualEnd = position;
         while (position < length && (a = js.charAt(position)) < '!') position++;
-        return a == '(' ? js.substring(start, end) : null;
+        return a == '(' ? js.substring(start, actualEnd) : null;
     }
 
-    function addFunction(/*Map<String, JSFunctions>*/ map, /*String*/ js, /*ConsoleStack*/ cs, /*int*/ position, /*int*/ length, /*String*/ name) {
+    function addFunction(/*Map*/ map, /*String*/ js, /*ConsoleStack*/ cs, /*int*/ position, /*int*/ length, /*String*/ name) {
         var /*String*/ javaDoc = null;
         var jds = null;
         var /*int*/ i, /*int*/ start;
+        var /*String 1*/ c;
         if (position > 5) {
             i = position - 1;
-            var /*String 1*/ c = ' ';
             while (i > 5 && (c = js.charAt(i)) < '!') i--;
             if (js.charAt(i - 1) == '*' && c == '/') {
                 start = i - 4;
@@ -51,19 +46,31 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
             }
         }
 
-        var /*Brackets*/ first = Brackets.findFirst(js, position + 8, length - 1);
-        if (first != null) {
-            i = first.start;
-            var /*int*/ j = first.end + 1;
+        var /*Brackets*/ brackets = Brackets.findFirst(js, position + 8, length - 1);
+        if (brackets != null) {
+            i = brackets.start;
+            var /*int*/ j = brackets.end + 1;
             var /*String*/ parameters = js.substring(i, j);
-            var /*int*/ l = js.length;
+            var /*String[]*/ functionParameters = [];
+            if (parameters && parameters.length>2) {
+                var /*String[]*/ paramsWithoutBrackets = Strings.trim(parameters.substr(1, parameters.length - 2)).split(",");
+                for (var p = 0; p < paramsWithoutBrackets.length; p++) {
+                    functionParameters.push(Strings.trim(paramsWithoutBrackets[p]));
+                }
+            }
+
+            brackets = Brackets.findFirst(js, j, length - 1);
+
+            if (!brackets) return j;
+
+            var /*int*/ l = brackets.end+1;
             var /*int*/ level = 0;
             start = j;
             var /*int*/ end = 0;
             var endChar = ' ', older = ' ';
             var /*boolean*/ isString = false;
             while (j < l) {
-                var c = js.charAt(j++);
+                c = js.charAt(j++);
                 if (isString) {
                     isString = c != endChar || older == '\\';
                 } else if (c == (endChar = '"') || c == (endChar = '\'')) {
@@ -98,27 +105,25 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
             var /*boolean*/ added = false;
             if (start + 1 < end) {
                 while (start++ < end) {
-                    var c = js.charAt(start);
-                    if (c != ' ' && c != '\n' && c != '\t') break;
+                    if (js.charAt(start) >= '!') break;
                 }
                 while (start < end--) {
-                    var c = js.charAt(end);
-                    if (c != ' ' && c != '\n' && c != '\t') break;
+                    if (js.charAt(end) >= '!') break;
                 }
                 if (start < end) {
                     added = true;
                     var /*String*/ jsBody = js.substring(start, end + 1);
-                    if (cs != null) cs.addFunction(name, parameters, jsBody, jds);
-                    map.put(name, new JSFunctions(name, parameters, jsBody, javaDoc));
+                    if (cs != null) cs.addFunction(name, functionParameters, jsBody, jds);
+                    map.put(name, new JSFunctions(name, functionParameters, jsBody, javaDoc));
                 } else {
-                    if (cs != null) cs.addFunction(name, parameters, null, jds);
-                    map.put(name, new JSFunctions(name, parameters, "", javaDoc));
+                    if (cs != null) cs.addFunction(name, functionParameters, null, jds);
+                    map.put(name, new JSFunctions(name, functionParameters, "", javaDoc));
                 }
             } else {
                 if (cs != null) {
-                    cs.addError("Error processing function '" + name + parameters + "': " + js);
+                    cs.addWarning("Error processing function '" + name + parameters);
                 }
-                end = length - 1;
+                end = brackets.end + 1;
             }
             position = added ? -end : end;
         }
@@ -136,12 +141,12 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
     function parseFunctions(/*Map*/ map, /*String*/ js, /*ConsoleStack*/ cs) {
         var /*boolean*/ result = false;
         var /*int*/ position = -1;
-        var /*int*/ length = js.length;
+        var /*int*/ end = js.length;
         var /*String 1*/ lastChar = ' ';
-        while (++position < length) {
+        while (++position < end) {
             var /*String 1*/ q = js.charAt(position);
-            if (q == 'f' && lastChar < '!' && position + 10 < length && js.substring(position + 1, position + 8)==("unction")) {
-                var /*String*/ name = functionName(js, position + 8, length);
+            if (q == 'f' && lastChar < '!' && position + 10 < end && js.substring(position + 1, position + 8)==("unction")) {
+                var /*String*/ name = functionName(js, position + 8, end);
                 if (name != null) {
                     if (name.length == 0) {
                         var /*int*/ i = 0;
@@ -155,7 +160,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                         while (map.containsKey(newName = name + i)) i++;
                         name = newName;
                     }
-                    position = addFunction(map, js, cs, position, length, name);
+                    position = addFunction(map, js, cs, position, end, name);
                     if (position < 0) {
                         result = true;
                         position = -position;
@@ -164,17 +169,17 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 }
             } else if (q == '\'' || q == '"') {
                 position++;
-                while (position < length && (js.charAt(position) != q || js.charAt(position - 1) == '\\')) position++;
+                while (position < end && (js.charAt(position) != q || js.charAt(position - 1) == '\\')) position++;
                 q = ' ';
             } else if (q == '/') {
                 var next = js.charAt(position + 1);
                 if (next == '/') {
                     position += 2;
-                    while (position < length && js.charAt(position) != '\n') position++;
+                    while (position < end && js.charAt(position) != '\n') position++;
                     q = ' ';
                 } else if (next == '*') {
                     position += 2;
-                    while (position < length && (js.charAt(position) != '/' || js.charAt(position - 1) != '*'))
+                    while (position < end && (js.charAt(position) != '/' || js.charAt(position - 1) != '*'))
                         position++;
                     q = ' ';
                 }
@@ -184,7 +189,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
         return result;
     }
 
-    function extractSpecialTags(/*String*/ htmlJS, /*Object(Map)*/ componentResources, /*String*/ before, /*String*/ after, /*String 1*/ stringChar) {
+    function extractSpecialTags(/*String*/ htmlJS, /*DependenciesMapper*/ dependenciesMapper, /*String*/ before, /*String*/ after, /*String 1*/ stringChar) {
         var /*int*/ i = 0;
         while ((i = htmlJS.indexOf("@{", i) + 2) != 1) {
             var /*int*/ end = Brackets.findEndingBracket(htmlJS, i - 1, '{', '}');
@@ -193,13 +198,9 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 var /*String*/ resource = htmlJS.substring(i, end);
                 var /*int*/ p;
                 if (resource.length > 0 && (p = resource.indexOf('.')) > 0) {
-                    var /*String*/ key = resource.substring(0, p);
-                    if (!componentResources.contains(key)) componentResources.add(key);
-                    //if (notAtEnd) {
-                    htmlJS = htmlJS.substring(0, i - 2) + before + resource + after + htmlJS.substring(end + 1);
-                    //} else {
-                    //    return htmlJS.substring(0, i - 2) + "'+" + resourceBundle + "(\"" + resource + "\");";
-                    //}
+                    var /*String*/ name = resource.substring(0, p);
+                    var key = resource.substr(p+1);
+                    htmlJS = htmlJS.substring(0, i - 2) + before + dependenciesMapper.get(name)+ "('" + key + "')" + after + htmlJS.substring(end + 1);
                 }
             }
 
@@ -215,11 +216,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 //int len = htmlJS.length;
                 var /*String*/ js = htmlJS.substring(i, end);
                 if (js.length > 0) {
-                    //if (notAtEnd) {
                     htmlJS = htmlJS.substring(0, i - 2) + s + Strings.replace(js,s1, s2) + s3 + htmlJS.substring(end + 1);
-                    //} else {
-                    //    return htmlJS.substring(0, i - 2) + "'+" + resourceBundle + "(\"" + js + "\");";
-                    //}
                 }
             }
 
@@ -236,12 +233,11 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
      * @param end                index of last character
      * @param parentStatic       should be evaluated by eval()
      * @param safeValue          webJS function
-     * @param componentResources
-     * @param resourceBundle
+     * @param dependenciesMapper dependenciesMapper
      * @param lowerLevel
-     * @return {object} parsed JavaScript
+     * @return {ParsedVariable} parsed JavaScript
      */
-    function parseTagVariables(/*String*/ js, /*int*/ start, /*int*/ end, /*Boolean*/ parentStatic, /*String*/ safeValue, /*Object(Map)*/ componentResources, /*String*/ resourceBundle, /*boolean*/ lowerLevel) {
+    function parseTagVariables(/*String*/ js, /*int*/ start, /*int*/ end, /*Boolean*/ parentStatic, /*String*/ safeValue, /*DependenciesMapper*/ dependenciesMapper, /*boolean*/ lowerLevel) {
         while (start <= end && js.charAt(start) == ' ') start++;
         while (start <= end && js.charAt(end) == ' ') end--;
         var /*boolean*/ isStatic;
@@ -274,7 +270,8 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 if (json && first.start > 0 && js.charAt(first.start - 1) == '$') {
                     json = false;
                     isStaticInVar = false;
-                    inVar = extractSpecialTags(js.substring(first.start + 1, first.end), componentResources, "\" + " + resourceBundle + "('", "') + \"", '"');
+                    //TODO
+                    inVar = extractSpecialTags(js.substring(first.start + 1, first.end), dependenciesMapper, "\" + " , " + \"", '"');
                     first.start -= 1;
                     endingBracket = startingBracket = "";
                 } else if (first.comas != null) {
@@ -293,7 +290,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                                 throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
                             fromIndex = endIndex + 1;
                         }
-                        var /*ParsedVariable*/ parsed = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, componentResources, resourceBundle, true);
+                        var /*ParsedVariable*/ parsed = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, dependenciesMapper, true);
                         if (json) {
                             if (inVar == null) {
                                 inVar = attName + parsed.variable;
@@ -310,12 +307,12 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                             }
                         } else {
                             if (isStaticInVar && parsed.isStatic) {
-                                inVar = '"' + trimOne(inVar) + ", " + trimOne(parsed.variable) + '"';
+                                inVar = '"' + Strings.trimOne(inVar) + ", " + Strings.trimOne(parsed.variable) + '"';
                             } else if (isStaticInVar) {
-                                inVar = '"' + trimOne(inVar) + ', " + ' + safeValue + "(" + parsed.variable + ') + ""';
+                                inVar = '"' + Strings.trimOne(inVar) + ', " + ' + safeValue + "(" + parsed.variable + ') + ""';
                             } else if (parsed.isStatic) {
                                 isStaticInVar = true;
-                                inVar = '"" + ' + inVar + " + \", " + trimOne(parsed.variable) + '"';
+                                inVar = '"" + ' + inVar + " + \", " + Strings.trimOne(parsed.variable) + '"';
                             } else {
                                 inVar += ' + ", " + ' + safeValue + "(" + parsed.variable + ")";
                             }
@@ -340,15 +337,15 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                         if (attName.length == 2)
                             throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
                         fromIndex = endIndex + 1;
-                        /*ParsedVariable*/ inner = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, componentResources, resourceBundle, true);
+                        /*ParsedVariable*/ inner = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, dependenciesMapper, true);
                         isStaticInVar = true;
                         if (inner.isStatic) {
-                            inVar = '"' + attName + trimOne(inner.variable) + '"';
+                            inVar = '"' + attName + Strings.trimOne(inner.variable) + '"';
                         } else {
                             inVar = '"' + attName + '" + ' + safeValue + "(" + inner.variable + ') + ""';
                         }
                     } else {
-                        var /*ParsedVariable*/ inner = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, componentResources, resourceBundle, true);
+                        var /*ParsedVariable*/ inner = parseTagVariables(js, fromIndex, toIndex - 1, null, safeValue, dependenciesMapper, true);
                         isStaticInVar = inner.isStatic;
                         if (isStaticInVar) {
                             inVar = inner.variable;
@@ -364,15 +361,15 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 var /*String*/ starting = js.substring(start, first.start);
                 var /*String*/ beforeEnd;
                 if (isStatic && isStaticInVar) {
-                    beforeEnd = "\"" + starting + startingBracket + trimOne(inVar) + endingBracket + "\"";
+                    beforeEnd = "\"" + starting + startingBracket + Strings.trimOne(inVar) + endingBracket + "\"";
                 } else if (isStatic) {
                     beforeEnd = "\"" + starting + startingBracket + "\" + " + inVar + " + \"" + endingBracket + "\"";
                 } else if (isStaticInVar) {
                     isStatic = true;
                     if (starting.length == 0) {
-                        beforeEnd = "\"" + startingBracket + trimOne(inVar) + endingBracket + "\"";
+                        beforeEnd = "\"" + startingBracket + Strings.trimOne(inVar) + endingBracket + "\"";
                     } else {
-                        beforeEnd = "\"\" + " + starting + " + \"" + startingBracket + trimOne(inVar) + endingBracket + "\"";
+                        beforeEnd = "\"\" + " + starting + " + \"" + startingBracket + Strings.trimOne(inVar) + endingBracket + "\"";
                         //throw new RuntimeException("Local variables are not supported in this construction: " + beforeEnd);
                     }
                 } else {
@@ -380,16 +377,16 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 }
                 if (first.end < end) {
                     //there is something after ")", "}"  or "]"
-                    var /*ParsedVariable*/ endParsedVar = parseTagVariables(js, first.end + 1, end, isStatic, safeValue, componentResources, resourceBundle, lowerLevel);
+                    var /*ParsedVariable*/ endParsedVar = parseTagVariables(js, first.end + 1, end, isStatic, safeValue, dependenciesMapper, lowerLevel);
                     var /*boolean*/ isStaticEndVar = endParsedVar.isStatic;
                     var /*String*/ endVar = endParsedVar.variable;
                     if (isStatic && isStaticEndVar) {
-                        variable = '"' + trimOne(beforeEnd) + trimOne(endVar) + '"';
+                        variable = '"' + Strings.trimOne(beforeEnd) + Strings.trimOne(endVar) + '"';
                     } else if (isStatic) {
-                        variable = '"' + trimOne(beforeEnd) + '" + ' + endVar + ' + ""';
+                        variable = '"' + Strings.trimOne(beforeEnd) + '" + ' + endVar + ' + ""';
                     } else if (isStaticEndVar) {
                         //isStatic = true;
-                        variable = '"" + ' + beforeEnd + ' + "' + trimOne(endVar) + '"';
+                        variable = '"" + ' + beforeEnd + ' + "' + Strings.trimOne(endVar) + '"';
                         throw "Local variables are not supported in this construction: " + variable;
                     } else {
                         variable = beforeEnd + endVar;
@@ -415,11 +412,13 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
             isStatic = true;
             variable = "\"" + variable + "\"";
         }
-        return {
-            variable: variable,
-            isStatic: isStatic,
-            evaluate : evaluate
-        };
+        return new ParsedVariable(variable, isStatic, evaluate);
+    }
+
+    function ParsedVariable(variable, isStatic, evaluate) {
+        this.variable = variable;
+        this.isStatic = isStatic;
+        this.evaluate = evaluate;
     }
 
     function stringToCode(/*String*/ s, /*String*/ safeValue) {
@@ -458,22 +457,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
         return !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c == '_'));
     }
 
-    function functionName(/*String*/ js, /*int*/ position, /*int*/ j) {
-        var a = ' ';
-        while (position < j && (a = js.charAt(position)) < 33) position++;
-        if (a == '(') {
-            //anonymous function
-            return "";
-        }
-        var /*int*/ start = position;
-        while (position < j && !isSpace(js.charAt(position))) position++;
-        var /*int*/ end = position;
-        while (position < j && (a = js.charAt(position)) < 33) position++;
-        return a == '(' ? js.substring(start, end) : null;
-    }
 
-    JSFunctions.trimOne = trimOne;
-    JSFunctions.extractSpecialTags = extractSpecialTags;
     JSFunctions.parseFunctions = parseFunctions;
     JSFunctions.parseTagVariables = parseTagVariables;
     JSFunctions.stringToCode = stringToCode;

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>Example title</title>
+    <script>
+        function t(s, a) {
+            console.log('calling t', s, a);
+            return 'name';
+        }
+
+        function beforeCreate(parameters, callBack) {
+            var tt = 1;
+            console.log('!!!!be ready for open @{example/helloWorldTexts.'+t(tt,'a')+'} component');
+            callBack();
+        }
+    </script>
+    <script>
+        function afterCreate(instance) {
+            console.log('!!!!opened');
+        }
+    </script>
+</head>
+<body>
+<script>
+</script>
+<h1>Hi @{example/helloWorldTexts.name}</h1>
+This is ony example
+</body>
+</html>
