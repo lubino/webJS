@@ -76,6 +76,15 @@
             return [width, height];
         }
 
+        var editorSize = 0;
+        function swap() {
+            var c = 0.99;
+            if (editorSize>0) editorSize = 0;
+            else if (editorSize<0) editorSize = c;
+            else editorSize = -c;
+            resize();
+        }
+
         function resizeLeftRight(size) {
             var styleInput = document.getElementById("input").style;
             var styleOutput = document.getElementById("output").style;
@@ -86,14 +95,17 @@
             var w = Math.round(size[0]/2-30);
             var h = Math.round(size[1]-70);
 
-            styleName['width'] = (400 < w ? 450 : 2*w-350)+"px";
+            styleName['width'] = (400 < w ? 400 : 2*w-400)+"px";
 
-            styleOutput['width']=styleInput['width']=w+"px";
+            var dw = Math.round(editorSize*w);
+
+            styleInput['width']=w-dw+"px";
+            styleOutput['width']=w+dw+"px"
             styleOutput['height']=styleInput['height']=h+"px";
 
             styleInput['left']=15+"px";
             styleOutput['top']=styleInput['top']=15+"px";
-            styleOutput['left']=w+40+"px";
+            styleOutput['left']=w+40-dw+"px";
 
             styleControl['width']=2*w+"px";
             styleControl['left']=20+"px";
@@ -112,20 +124,22 @@
             var styleFile = document.getElementById("file").style;
             var w = Math.round(size[0]/2-18);
             var h = Math.round(size[1]/2-40);
+            var dh = Math.round(editorSize*h);
 
-            styleName['width'] = (400 < w ? 450 : 2*w-350)+"px";
+            styleName['width'] = (400 < w ? 400 : 2*w-400)+"px";
 
             styleOutput['width']=styleInput['width']=2*w+"px";
-            styleOutput['height']=styleInput['height']=h+"px";
+            styleInput['height']=h-dh+"px";
+            styleOutput['height']=h+dh+"px";
 
             styleInput['left']=15+"px";
             styleInput['top']=15+"px";
-            styleOutput['top']=60+h+"px";
+            styleOutput['top']=60+h-dh+"px";
             styleOutput['left']=15+"px";
 
             styleControl['width']=2*w+"px";
             styleControl['left']=20+"px";
-            styleControl['top']=h+30+"px";
+            styleControl['top']=h-dh+30+"px";
 
             styleFile['left']=fileButton.offsetLeft+"px";
             styleFile['width']=fileButton.offsetWidth+"px";
@@ -196,6 +210,12 @@
                 exec: tab,
                 readOnly: true // false if this command should not apply in readOnly mode
             });
+            editor.commands.addCommand({
+                name: 'tab',
+                bindKey: {win: 'Ctrl-S',  mac: 'Ctrl-S'},
+                exec: swap,
+                readOnly: true // false if this command should not apply in readOnly mode
+            })
         }
 
         function aceTheme() {
@@ -327,6 +347,8 @@
    Filename: <input type="text" style="width: 300px" id="name"><button onclick="doIt()">parse to JS</button>
 
     <button onclick="run()">eval</button>
+
+    <button onclick="swap()">size</button>
 
 </div>
 <textarea id="output" class="flow"></textarea>
