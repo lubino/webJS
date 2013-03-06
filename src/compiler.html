@@ -49,9 +49,10 @@
             var /*String*/ name = document.getElementById("name").value;
             save(name, value);
 
-            require(['parse'], function (parse) {
+            if (value>'') require(['parse'], function (parse) {
                 setter(parse.toString(name, value));
             });
+            else setter("");
         }
 
         var isIE = '\v' == 'v' ? parseFloat(navigator.appVersion.split("MSIE")[1]) : false,
@@ -77,12 +78,27 @@
         }
 
         var editorSize = 0;
-        function swap() {
-            var c = 0.99;
-            if (editorSize>0) editorSize = 0;
-            else if (editorSize<0) editorSize = c;
-            else editorSize = -c;
+        function swap(c) {
+            if (typeof c != "number") {
+                c = 0.99;
+                if (editorSize > 0) editorSize = 0;
+                else if (editorSize < 0) editorSize = c;
+                else editorSize = -c;
+            } else {
+                editorSize = c;
+            }
             resize();
+            syncSwap();
+        }
+
+        function syncSwap() {
+            document.getElementById("s1").style.color = editorSize<0 ? "red" : "black";
+            document.getElementById("s2").style.color = editorSize==0 ? "red" : "black";
+            document.getElementById("s3").style.color = editorSize>0 ? "red" : "black";
+        }
+
+        function resizeName(styleName, w) {
+            styleName['width'] = (400 < w ? 310 : 2*w-490)+"px";
         }
 
         function resizeLeftRight(size) {
@@ -95,7 +111,7 @@
             var w = Math.round(size[0]/2-30);
             var h = Math.round(size[1]-70);
 
-            styleName['width'] = (400 < w ? 400 : 2*w-400)+"px";
+            resizeName(styleName, w);
 
             var dw = Math.round(editorSize*w);
 
@@ -126,7 +142,7 @@
             var h = Math.round(size[1]/2-40);
             var dh = Math.round(editorSize*h);
 
-            styleName['width'] = (400 < w ? 400 : 2*w-400)+"px";
+            resizeName(styleName, w);
 
             styleOutput['width']=styleInput['width']=2*w+"px";
             styleInput['height']=h-dh+"px";
@@ -134,12 +150,13 @@
 
             styleInput['left']=15+"px";
             styleInput['top']=15+"px";
-            styleOutput['top']=60+h-dh+"px";
+
+            styleOutput['top']=h+30-dh+"px";
             styleOutput['left']=15+"px";
 
             styleControl['width']=2*w+"px";
             styleControl['left']=20+"px";
-            styleControl['top']=h-dh+30+"px";
+            styleControl['top']=2*h+45+"px";
 
             styleFile['left']=fileButton.offsetLeft+"px";
             styleFile['width']=fileButton.offsetWidth+"px";
@@ -149,6 +166,26 @@
             var size = getWindowSize();
             if (size[0]/size[1]>1.25) resizeLeftRight(size);
             else resizeUpTop(size);
+            var i = editors.length;
+            while(i-->0) editors[i].resize();
+        }
+
+        function readSomeFile(f, callBack) {
+            if (window.FileReader) { // HTML5/Chrome way
+                var r = new FileReader();
+                r.onloadend = function () {
+                    callBack(r.result);
+                };
+                r.readAsBinaryString(f);
+            } else if (f.getAsBinary) { // custom Firefox way
+                var derStr = f.getAsBinary();
+                callBack(derStr);
+            } else {
+                alert("Your browser doesn't support reading files; try Firefox, Chrome or Safari.");
+                file.disabled = true;
+                return false;
+            }
+            return true;
         }
 
         var editors = [];
@@ -165,6 +202,12 @@
             editor.getSession().setMode("ace/mode/"+type);
             editor.setValue(value, 1);
             editors.push(editor);
+            div.ondrop=function (event) {
+                if (event.dataTransfer.files.length>0) readSomeFile(event.dataTransfer.files[0], function (r) {
+                    editor.insert(r);
+                });
+                event.preventDefault();
+            };
 
             var exec = null;
             var tab = null;
@@ -228,6 +271,7 @@
 
         function init() {
             resize();
+            syncSwap();
             window.addEventListener("resize", resize);
             fromLS();
 
@@ -274,22 +318,7 @@
                 if (file.files.length == 0) {
                     return true;
                 }
-                var f = file.files[0];
-                if (window.FileReader) { // HTML5/Chrome way
-                    var r = new FileReader();
-                    r.onloadend = function () {
-                        fileContent(r.result);
-                    };
-                    r.readAsBinaryString(f);
-                } else if (f.getAsBinary) { // custom Firefox way
-                    var derStr = f.getAsBinary();
-                    fileContent(derStr);
-                } else {
-                    alert("Your browser doesn't support reading files; try Firefox, Chrome or Safari.");
-                    file.disabled = true;
-                    return false;
-                }
-                return true;
+                readSomeFile(file.files[0], fileContent);
             }
             file.onchange = fileChange;
 
@@ -328,27 +357,29 @@
             border: #708dcc 2px solid;
             border-radius: 2px;
         }
+        #output { border-color: #5dc42c;}
     </style>
 </head>
 <body onload="init()">
 <textarea id="input" class="flow"></textarea>
 <div id="control" class="flow">
 
-    <select id="theme" onchange="aceTheme()">
-        <option>chrome</option> <option>textmate</option> <option>eclipse</option> <option>xcode</option> <option>monokai</option>
-        <option>clouds</option> <option>ambiance</option> <option>tomorrow</option> <option>twilight</option> <option>dawn</option>
-        <option>chaos</option>
-    </select>
-
+    <span style="background: #708dcc;padding: 7px 2px 7px 4px;border-radius: 6px;">src filename
+    <input type="text" style="width: 300px; border-radius: 4px;border: none;padding: 2px 1px 3px 1px; " id="name">
     <button id="fileButton" onclick="fileClick()" style="z-index: 1">from file</button>
-
     <input type="file" id="file" class="flow" style="z-index: 100;opacity: 0.01">
+       <button onclick="doIt()">src to JS</button></span>
 
-   Filename: <input type="text" style="width: 300px" id="name"><button onclick="doIt()">parse to JS</button>
+    <span style="background: #5dc42c;padding: 7px 2px 7px 2px;border-radius: 6px;"><button onclick="run()">run</button></span>
 
-    <button onclick="run()">eval</button>
+    <span style="background: #bab5b9;padding: 7px 2px 7px 4px;border-radius: 6px;">Show
+    <button onclick="swap(-0.99)" id="s1">src</button><button onclick="swap(0)" id="s2">1:1</button><button onclick="swap(0.99)" id="s3">JS</button><select id="theme" onchange="aceTheme()">
+            <option>chrome</option> <option>textmate</option> <option>eclipse</option> <option>xcode</option> <option>monokai</option>
+            <option>clouds</option> <option>ambiance</option> <option>tomorrow</option> <option>twilight</option> <option>dawn</option>
+            <option>chaos</option>
+        </select></span>
 
-    <button onclick="swap()">size</button>
+
 
 </div>
 <textarea id="output" class="flow"></textarea>
