@@ -42,7 +42,7 @@ define(['compiler/Strings'], function (Strings) {
             keys: ""
         };
 
-        localization = "Localization";
+        localization = "Resources";
         localizationName = runConfig.webDir + localization;
 
         dependencies.init(null);
@@ -92,7 +92,7 @@ define(['compiler/Strings'], function (Strings) {
 
 
     /**
-     * Creates function around Localization properties from function parseResource
+     * Creates function around Resources properties from function parseResource
      * @param name name of module
      * @param input rendered JS from parseResource function
      * @param dependencies dependencies Map

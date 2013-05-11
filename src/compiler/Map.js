@@ -11,7 +11,7 @@ define([],function () {
         var _values = [];
 
         function size() {
-            return _values.length;
+            return _keys.length;
         }
 
         function keys() {
@@ -27,13 +27,13 @@ define([],function () {
         }
 
         function add(key) {
-            map[key] = size();
+            map[key] = _keys.length;
             _keys.push(key);
             _values.push(key);
         }
 
         function put(key, value) {
-            map[key] = size();
+            map[key] = _keys.length;
             _keys.push(key);
             _values.push(value);
         }
@@ -44,6 +44,18 @@ define([],function () {
             return _values[i];
         }
 
+        function remove(key) {
+            var i = map[key];
+            if (typeof i == 'undefined') return null;
+            delete map[key];
+            for (var field in map) {
+                var otherKey = ""+field;
+                if (map[otherKey]>i) map[otherKey]--;
+            }
+            _keys.splice(i,1);
+            return _values.splice(i,1);
+        }
+
         this.size = size;
         this.contains = containsKey;
         this.containsKey = containsKey;
@@ -52,6 +64,7 @@ define([],function () {
         this.put = put;
         this.get = getValue;
         this.add = add;
+        this.remove = remove;
     }
 
     return Map;

@@ -17,32 +17,72 @@
                     callback(xmlhttp.responseText);
                 }
             };
-            xmlhttp.open("GET", fileName, true);
+            xmlhttp.open("GET", fileName, false);
             xmlhttp.send();
 
         }
 
-        require(['compiler/HtmlParser', 'compiler/DependenciesMapper', 'compiler/InputStream', 'compiler/ConsoleStack', 'compiler/Strings'],function (HtmlParser, DependenciesMapper, InputStream, ConsoleStack, Strings){
-            var e = document.getElementById("console");
-            var cs = new ConsoleStack(null,null,null,null,null,{log:function (d, s) {
-                e.innerHTML+='<br>'+ d+Strings.replace(Strings.replace(s,'<',"&lt;"),'>',"&gt;").replace("___.",'<span style="color:red">').replace(".___",'</span>')
+        require(['compiler/ConsoleStack', 'compiler/Strings', 'parse', 'web/Listeners'], function (ConsoleStack, Strings, parse, Listeners) {
+            var consoleTag = document.getElementById("console");
+            var buttonsTag = document.getElementById("buttons");
+            var cs = new ConsoleStack(null, null, null, null, null, {log: function (d, s) {
+                consoleTag.innerHTML += '<br>' + d + Strings.replace(Strings.replace(""+s, '<', "&lt;"), '>', "&gt;").replace("___.", '<span style="color:red">').replace(".___", '</span>')
             }});
 
-            var names = ["test/parseHtml1"];var i = names.length;
-            while (i-->0){
-                var name = names[i];
-                load(name+".html", function (content) {
-                    var dependencies = new DependenciesMapper();
-                    var out = new HtmlParser(name, dependencies, runParameters).parse(new InputStream(content), cs);
-                console.log("define(['"+dependencies.modules().slice(1).join("', '")+"'],\n"+out+"\n);");
+            Listeners.registerListener("showedWebComponentChild", function (a) {
+                cs.log("Fired showedWebComponentChild " + a.name + " ("+ a.child.factory.componentName+")", JSON.stringify(a.parameters));
             });
-            }
+            Listeners.registerListener("showedWebComponent", function (a) {
+                cs.log("Fired showedWebComponent" + a.name, JSON.stringify(a.parameters));
+            });
+            Listeners.registerListener("loadingWebComponent", function (a) {
+                cs.log("Fired loadingWebComponent" + a.name, JSON.stringify(a.parameters));
+            });
+            Listeners.registerListener("creatingWebComponent", function (a) {
+                cs.log("Fired creatingWebComponent" + a.name, JSON.stringify(a.parameters));
+            });
 
+            var names = ["parseHtml1", "parseHtml2"];
+            var i = names.length;
+            var contents = new Array(i);
+            while (i-- > 0) {
+                (function (component, i) {
+                    var fileName = component+".html";
+                    load(fileName, function (content) {
+                        contents[i]=content;
+                        var button = document.createElement("button");
+                        button.innerHTML = fileName;
+                        button.onclick = function () {
+                            require([component], function (cmp) {
+                                cmp('main');
+                            })
+                        };
+                        buttonsTag.appendChild(button);
+                    });
+                })("test/" + names[i], i);
+            }
+            i = names.length;
+            cs.start();
+            while (i-- > 0) {
+                var fileName = "test/" + names[i] + ".html";
+                console.log("---------------------- "+names[i]);
+                console.log(parse.toString(fileName, contents[i], cs));
+            }
+            cs.end();
         });
     </script>
 </head>
-<body>
+<body style="text-align: left;">
 <div id="console" style="text-align: left;font-family: Monaco, Menlo, 'Ubuntu Mono', 'Droid Sans Mono', Consolas, monospace;
-font-size: 12px;background: white;border: #1e90ff solid 2px;"></div>
+font-size: 12px;background: white;border: #5dc42c solid 2px;border-radius: 3px;margin: 10px;padding: 3px;">
+    <span style="color: green">Console:</span>
+</div>
+<div id="buttons" style="padding: 0 15px;">
+    Available test components:
+</div>
+<div style="background: white;margin: 10px;padding: 3px;border: #708dcc 2px solid;border-radius: 2px;">
+    Component output:
+    <div id="main"></div>
+</div>
 </body>
 </html>

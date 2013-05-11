@@ -56,11 +56,41 @@ define([],function () {
      * @param s some string
      */
     function toJSString(s) {
+        return "'"+encodeString(s)+"'";
+    }
+
+    /**
+     * Converts string to a string fine for JS variable value
+     * @param s some string
+     */
+    function fromJSString(s) {
+        //TODO do type detection
+        var length = s.length-2;
+        return length>0 ? decodeString(s.substr(1, length)) : "";
+    }
+
+    /**
+     * Converts string to a string fine for JS variable value
+     * @param s some string
+     */
+    function encodeString(s) {
         var c = ["\t","\n","'", "\\"], cd = ["\\t","\\n","\\'", "\\\\"], l= c.length;
         while (l-->0) {
             s = replace(s, c[l], cd[l]);
         }
-        return "'"+s+"'";
+        return s;
+    }
+
+    /**
+     * Converts string to a string fine for JS variable value
+     * @param s some string
+     */
+    function decodeString(s) {
+        var c = ["\t","\n","'", "\\"], cd = ["\\t","\\n","\\'", "\\\\"], l= c.length;
+        while (l-->0) {
+            s = replace(s, cd[l], c[l]);
+        }
+        return s;
     }
 
     function addSemicolon(s) {
@@ -91,7 +121,7 @@ define([],function () {
             isOK = isOK || (c>='0' && c<='9');
             if (isOK) {
                 result += c;
-            } else if (c=='\\' || c=='/') {
+            } else if (c=='\\' || c=='/' || c=='.') {
                 result += "_"
             }
         }
@@ -122,6 +152,8 @@ define([],function () {
         removeWhiteSpaces: removeWhiteSpaces,
         replaceWith: replaceWith,
         toJSString: toJSString,
+        fromJSString: fromJSString,
+        encodeString: encodeString,
         addSemicolon: addSemicolon,
         toJSName: toJSName,
         toPath: toPath,

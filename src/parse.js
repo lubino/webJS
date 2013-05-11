@@ -8,41 +8,48 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
     /**
      * Loads file using AJAX request
      * @param url url of file
+     * @param callBack callBack or null for synchronous load
      * @return InputStream
      */
-    function load(url) {
+    function load(url, callBack) {
         var content = "";
         var loaded = false;
         var ajax = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
         ajax.onreadystatechange = function () {
             if (ajax.readyState == 4 && (ajax.status == 200 || ajax.status == 0)) {
-                content = ajax.responseText;
-                loaded = true;
+                if (callBack) callBack(new InputStream(ajax.responseText));
+                else {
+                    content = ajax.responseText;
+                    loaded = true;
+                }
             }
         };
-        ajax.open("GET", url, false);
+        ajax.open("GET", url, callBack!=null);
         ajax.send();
 
-        if (!loaded) throw "Can't load file '"+url+"'";
+        if (!callBack && !loaded) throw "Can't load file '"+url+"'";
 
         //noinspection JSValidateTypes
-        return new InputStream(content);
+        return callBack ? null : new InputStream(content);
     }
 
     function execute(name, js, /*DependenciesMapper*/dependencies, type, /*ConsoleStack*/ cs) {
         try {
-            if (window.console) console.log("Executing "+name+" of type "+type);
+            if (window.console) console.log("Executing " + name + " of type " + type);
+
+            var requires = [], modules = dependencies.modules(),i;
+            if (type == 1) modules = modules.slice(1);
+
             if (type == 1 || type == 2) {
-                var requires = [], modules = dependencies.modules();
-                if (type==1) modules = modules.slice(1);
-                for (var i=0;i<modules.length;i++) {
-                    requires.push("require("+Strings.toJSString(modules[i])+")");
+                for (i = 0; i < modules.length; i++) {
+                    requires.push("require(" + Strings.toJSString(modules[i]) + ")");
                 }
-                js = "("+js+")("+requires.join(', ')+")";
-                cs.end(true);
-                return eval(js);
+                js = "(" + js + ")(" + requires.join(', ') + ")";
+            } else {
+                return null;
             }
-            return null;
+            cs.end(true);
+            return eval(js);
         } catch (e) {
             if (window.console) {
                 console.log("Error executing "+name, e);
@@ -81,7 +88,7 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
             if (locales && locales.length >0) {
                 for (var i=0;i<locales.length;i++) {
                     var nameWithLocale = name+"_"+locales[i];
-                    out += PropertiesParser.parseProperties(nameWithLocale, load(nameWithLocale+extension), dependencies, cs, runParameters);
+                    out += PropertiesParser.parseProperties(nameWithLocale, load(nameWithLocale+extension, null), dependencies, cs, runParameters);
                 }
                 out = PropertiesParser.finishProperties(nameWithLocale, out, dependencies);
             } else {
@@ -90,15 +97,19 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
         } else if (type == 1) {
             //noinspection JSValidateTypes
             var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
-            out = parser.parse(load(name+extension), cs);
+            out = parser.parse(load(name+extension, null), cs);
         } else {
             throw "This kind of file '"+url+"' is not supported, wrong extension.";
         }
         return execute(name, out, dependencies, type, cs);
     }
 
-    parse.toString = function (fileName, value) {
-        /*ConsoleStack*/ cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
+    parse.toString = function (fileName, value,/*ConsoleStack*/cs) {
+        var loadCS = !cs;
+        if (loadCS) {
+            cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
+            cs.start();
+        }
         var result = "";
         try {
             //noinspection JSValidateTypes
@@ -122,10 +133,10 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
             } else {
                 throw "This kind of file '"+fileName+"' is not supported, wrong extension.";
             }
-            cs.end(true);
+            if (loadCS) cs.end(true);
         } catch (e) {
+            cs.addError(e);
             result += "\n\n\n/* \n\n"+e+"\n\n*/\n\n";
-            log("Exception:", e);
         }
         return result;
     };

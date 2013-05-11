@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body onload="console.log('Ahoj od ${(parameters.o=location.href)}')">
+parseHtml1.html: <div id="component.test/parseHtml1"> ??? </div>
+<div id="component.test/parseHtml1(parameters.klient)"> 1 </div>
+<div id="component.test/parseHtml1(${parameters})"> 2 </div>
+<div id="component.test/parseHtml1(${parameters.i},8)"> 2 </div>
+<input id="parameters.o" onchange="parameters.i=parameters.o.length==1 ? 'pismeno '+parameters.o.toUpperCase() : parameters.o" /> <button onclick="parameters.i=parameters.o=='a' ? 'pismeno A' : parameters.o">Alert It</button>
+<input id="parameters.o" />
+<input id="parameters.i" />
+</body>
+</html>

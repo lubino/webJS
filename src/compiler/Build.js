@@ -88,8 +88,8 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                 //noinspection JSValidateTypes
                 var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
                 var js = parser.parse(input, cs);
-                js = HtmlParser.doRequireModule(js, dependencies);
-                file.saveFile(destination + fileName, HtmlParser.doRequireModule(js, dependencies), runParameters.outputCharset);
+                var requireJS_Definition = HtmlParser.doRequireModule(js, dependencies);
+                file.saveFile(destination + fileName, requireJS_Definition, runParameters.outputCharset);
             } else {
                 throw "Unknown file extension '"+fileName+"'";
             }
@@ -182,8 +182,8 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
         return {
             createInstance: "Components.createInstance",
             safeValue: "Components._sV",
-            resource: "Localization.setResourceModule",
-            resourceBundle: "Localization.rb",
+            resource: "Resources.setResourceModule",
+            resourceBundle: "Resources.rb",
             webDir: "web/",
             inputCharset: "UTF-8",
             outputCharset: "UTF-8"

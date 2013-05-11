@@ -69,18 +69,36 @@ define([], function () {
 
     /**
      * Sets actual locale
-     * @param locale actula locale e.g. "en_US"
+     * @param locale actual locale e.g. "en_US"
      */
     function setLocale(locale) {
         actualLocale = locale;
     }
 
+    /**
+     * Validates and returns locales as array
+     * @return {String[]} array of validated locales
+     */
+    function locales(/*... locales ...*/) {
+        var result = [];
+        for(var i=0; i<arguments.length; i++) {
+            var locale = arguments[i];
+            var localeArr = locale > "" ? locale.split('_') : [], language = localeArr[0], country = localeArr[1];
+            if (localeArr.length != 2 || (language.length != 2 && language != 'lat') || language != language.toLowerCase() || country.length != 2 || country != country.toUpperCase()) {
+                throw "Sorry, '"+locale+"' can not be used as regular locale. Use format 'language_COUNTRY'.";
+            }
+            result.push(locale);
+
+        }
+        return result;
+    }
 
     return {
         rb: rb,
         rbCall: rbCall,
         r: resource,
         setResourceModule: setResourceModule,
+        locales: locales,
         getterFor: getterFor,
         setLocale: setLocale,
         author: "Lubos Strapko (https://github.com/lubino)"

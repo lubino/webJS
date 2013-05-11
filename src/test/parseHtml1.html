@@ -2,10 +2,15 @@
 <html>
 <head>
     <a accesskey="${nieco}" />
-    <title>This is title @{titile.${'fdgsdgf'+fdgd()+"dfgg"}} </title>
+    <title>This is title @{test/tst1.val${1}} </title>
     <script>
-        var req1 = require('req1');
-        var req2 = require("req2");
+
+        function alertt(a) {
+            console.log(a);
+        }
+
+        var req1 = require('test/tst1');
+        var req2 = require("test/tst1");
         var text1 = "@{test/tst1.val1}";
         var text2 = "some example @{test/tst1.val1}";
         var text3 = "some example @{test/tst1.val1} on end";
@@ -16,7 +21,7 @@
         var text8 = '@{test/tst1.val1} on end';
     </script>
 </head>
-<body onload="alert(1);${fgdfg}">
+<body onload="alertt('${1}')">
   <div> test </div>
   <script language="JavaScript">
       var text1 = "@{test/tst1.val1}";
@@ -27,12 +32,15 @@
       var text6 = 'some example @{test/tst1.val1}';
       var text7 = 'some example @{test/tst1.val1} on end';
       var text8 = '@{test/tst1.val1} on end';
-      alert('@{test/tst1.val1}');
+      var text9 = '@{test/tst1.val${1}}';
+      var text10 = '@{test/tst1.val${"1"}}';
+      var text11 = "@{test/tst1.val${'1'}}";
+      alertt('@{test/tst1.val1}');
   </script>
   <div a1="v1" a2=v2 a3='v3' a4 a5='@{test/tst1.val1}'> test2 </div>
 
     <script>
-        if (something) {
+        if (1>0) {
     </script>
   @{test/tst1.val1}
     <script>

@@ -1,128 +1,176 @@
-define(['web/Listeners', 'web/Constants'], function (Listeners, Constants) {
+define(['web/Listeners'], function (Listeners) {
     var Components = {author: "Lubos Strapko"};
 
-    //MODULARIZATION TODO:
-    // 1, validations
-    // 2, synchronizations
-    // 3, listeners
-    // 4, parentCallBacks
+    var log = function (message, obj) {if (window.console) console.log(message, obj)};
 
     /**
      * Initializes all HTML elements using the array of unique IDs with custom configuration
      * using parameters reference
      * @param instance
-     * @param parent instance wrapper
-     * @param parameters
-     * @param componentElement
      */
-    function initializeComponent(instance, parent, parameters, componentElement) {
+    function initializeComponent(/*Instance*/instance) {
         var i,
             ids = instance.__p[0],
             j = ids.length,
-            keys = {},
+            existingKeys = {},
             children = null,
-            item,
-            classes = {};
+            item;
         for (i = 0; i < j; i++) {
             item = ids[i];
             var element = document.getElementById(item.id);
             if (element) {
                 var name = element.nodeName.toLowerCase();
-                var click = null;
-                if (item.click) {
-                    click = this.setComponentElementEvent("" + item.click, instance, parameters, document, window);
-                }
-                var change = null;
-                if (item.change) {
-                    change = this.setComponentElementEvent("" + item.change, instance, parameters, document, window);
-                }
-                var key = item.key;
-                if (typeof(key) == "string" && key.substr(0, 11) == "parameters.") {
-                    var first = keys[key];
-                    if (first) {
-                        ids[first - 1].multiple = ids[i].multiple = true;
-                    } else {
-                        keys[key] = i + 1;
-                    }
-                    if (name == "input" || name == "textarea") {
-                        var type = element.getAttribute("type");
-                        if (type == "radio" || type == "checkbox") {
-                            if (click) {
-                                console.log("The click event is not supported for radio inputs. Use change event instead.");
-                            }
-                            element.onclick = this.renderOnChange(i, instance, item, parameters, element, change);
-                            click = null;
-                            change = null;
-                        } else {
-                            element.onkeyup = this.renderOnKeyChange(i, instance, item, parameters, element, change);
-                            change = null;
-                        }
-                    } else if (name == "select") {
-                        element.onchange = this.renderOnChange(i, instance, item, parameters, element, change);
+                var click = item.onclick;
+                var change = item.onchange;
+                if (item.sync) {
+                    //this element is synchronized with data model
+                    var type = "";
+                    var isCheckbox = name == "input" && ((type = element.getAttribute("type") == "radio" || type == "checkbox"));
+                    if (name == "select" || (!isCheckbox && (name == "input" || name == "textarea"))) {
+                        element.onchange = element.onkeyup = createOnChangeElementCallBack(instance, item, element, null, change);
+                        change = null;
+                    } else if (isCheckbox) {
+                        element.onclick = createOnChangeElementCallBack(instance, item, element, click, change);
+                        click = null;
                         change = null;
                     }
-                    if (key.substr(0, 11) == "parameters.") {
-                        var pIndex = key.lastIndexOf('.');
-                        if (pIndex > 11) {
-                            try {
-                                var parentKey = key.substr(0, pIndex),
-                                    parentKeyObject = eval(parentKey),
-                                    field = key.substr(pIndex + 1),
-                                    className = parentKeyObject['class'];
-                                if (className) {
-                                    if (!classes[className]) classes[className] = [];
-                                    classes[className].push({key:key.substr(11, pIndex - 11), field:field});
-                                }
-                            } catch (e) {
-                                console.log("Can't evaluate model", e);
-                            }
-                        }
+                }
+                var key = item.key;
+                if (typeof(key) == "string") {
+                    var keyIndex = existingKeys[key];
+                    if (keyIndex != undefined) {
+                        ids[keyIndex].multiple = item.multiple = true;
+                    } else {
+                        existingKeys[key] = i;
                     }
                 }
                 if (item.component) {
                     if (!children) children = [];
                     if (!item.key) item.key = "component." + item.component.name;
                     element.setAttribute("componentName", item.component.name);
-                    children.push({factory:item.component.factory, name:item.component.name, parameters:item.component.parameters || {}, element:element});
+                    children.push({factory:item.component.factory, parameters:item.component.parameters || {}, element:element});
                     delete item.component;
                 }
                 if (change) {
-                    element.onchange = change;
+                    element.onchange = createElementEventCallBack(change, instance, element);
                 }
                 if (click) {
-                    element.onclick = click;
+                    element.onclick = createElementEventCallBack(click, instance, element);
                 }
-                if (item.load) {
-                    element.onload = this.setComponentElementEvent("" + item.load, instance, parameters, document, window);
+                if (item.onload) {
+                    element.onload = createElementEventCallBack(item.onload, instance, element);
                 }
                 if (item.forId) {
-                    var forItem = this.getComponentId(instance, item.forId);
+                    var forItem = getComponentId(instance, item.forId);
                     if (forItem) {
                         element.setAttribute("for", forItem.id);
                         element.setAttribute("htmlFor", forItem.id);
                     } else {
-                        console.log("No element for " + item.forId);
+                        log("No element for " + item.forId);
                     }
                 }
             } else {
-                console.log("No element for " + item.id);
+                log("No element for " + item.id);
             }
         }
-        var validators = {};
-        for (i in classes) {
-            this._rVF(instance, i, classes[i], validators);
+        instance.syncToHTML(null);
+        return children;
+    }
+
+    /**
+     * Creates a callback function for element's event handler
+     * @param func function to call inside of handler
+     * @param instance component instance
+     * @param element HTML element
+     * @return {Function}
+     */
+    function createElementEventCallBack(func, /*Instance*/instance, element) {
+        return function (event) {
+            instance.syncFromHTML();
+            func(event);
+            instance.syncToHTML(element);
+        };
+    }
+
+    /**
+     * Creates a callback function for element's event handler for changing value
+     * @param instance component instance
+     * @param item     ID item
+     * @param element  HTML element
+     * @param click    on click function
+     * @param change   on change function
+     * @return {Function}
+     */
+    function createOnChangeElementCallBack(/*Instance*/instance, item, element, click, change) {
+        return function (event) {
+            onChangeElementListener(instance, item, element, click, change, event);
+        };
+    }
+
+    /**
+     * Returns last item ID for web element ID
+     * @param instance component instance
+     * @param id value or key of element
+     */
+    function getComponentId(/*Instance*/instance, id) {
+        var ids = instance.__p[0];
+        var l = ids ? ids.length : 0;
+        while (l-- > 0) {
+            var item = ids[l];
+            if (item.key == id) return item;
         }
-        if (children) {
-            instance._childrenToInit = {children:children};
+        return null;
+    }
+
+    /**
+     * Returns all item IDs for web element ID
+     * @param instance component instance
+     * @param id value or key of element
+     */
+    function getComponentIds(instance, id) {
+        var ids = instance.__p[0];
+        var l = ids ? ids.length : 0, result = [];
+        while (l-- > 0) {
+            var item = ids[l];
+            if (item.key == id) result.push(item);
         }
-        instance.syncToHTML();
+        return result;
+    }
+
+    /**
+     * Listener for element change event
+     * @param instance Component instance
+     * @param item element item from instance ids
+     * @param element HTML element
+     * @param clickFunction required onClick function
+     * @param changeFunction required onChange function
+     * @param event browser's event
+     */
+    function onChangeElementListener(/*Instance*/instance, item, element, clickFunction, changeFunction, event) {
+        var possibleExternalChange = false;
+
+        if (setModelValue(element, item, instance)) {
+            if (changeFunction) {
+                changeFunction(event);
+                possibleExternalChange = true;
+            }
+        }
+
+        if (clickFunction) {
+            clickFunction(event);
+            possibleExternalChange = true;
+        }
+
+        if (possibleExternalChange) {
+            instance.syncToHTML(null);
+        }
     }
 
     /**
      * Destroy component and all its chindren
      * @param instance component (instance) object
      */
-    function destroyComponent(instance) {
+    function destroyComponent(/*Instance*/instance) {
         var children = instance.getChildren();
         var j = children.length;
         for (var i = 0; i < j; i++) {
@@ -132,92 +180,312 @@ define(['web/Listeners', 'web/Constants'], function (Listeners, Constants) {
     }
 
     /**
-     * Sync value to HTML element
+     * Returns value for element
      * @param element HTMl element
-     * @param t getter
-     * @param val value
      */
-    function setComponentValue(element, t, val) {
-        var name = element ? element.nodeName.toLowerCase() : "", i, value = t ? t.toView(val) : val;
+    function getComponentValue(element) {
+        var name = element ? element.nodeName.toLowerCase() : "", i;
         if (name == "input" || name == "textarea") {
             if (element.type == "radio" || (element.type == "checkbox" && element.value > "")) {
-                element.checked = element.value == value;
+                if (element.checked) {
+                    return element.value;
+                } else {
+                    return null;
+                }
             } else if (element.type == "checkbox") {
-                element.checked = value;
+                return !(!element.checked);
             } else {
-                element.value = value;
+                return element.value>"" ? element.value : null;
+            }
+        } else if (name == "select") {
+            var selectedIndex = element.selectedIndex,
+                options = element.options;
+            if (selectedIndex >= 0 && selectedIndex < options.length) return options[selectedIndex].value;
+            return null;
+        } else {
+            var html = element.innerHTML, acceptHTML = element.getAttribute("insertHTML");
+            if (acceptHTML) return html;
+            return htmlToText(html);
+        }
+    }
+
+    /**
+     * Sets value to parameters (model) - Sync value from HTML element to model
+     * @param element
+     * @param item
+     * @param listener object enabled by Listeners
+     * @return {boolean}
+     */
+    function setModelValue(element, item, listener) {
+        var modelValue = item.sync(),
+            value = getComponentValue(element);
+        if (modelValue != value) {
+            //value changed
+
+            if (listener && listener.runListeners) {
+                listener.runListeners(item.key, value, modelValue);
+            }
+            //TODO validate value and run listeners
+
+            item.sync(value);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Sets value to element - Sync value to HTML element from value
+     * @param element HTMl element
+     * @param value value to set
+     */
+    function setComponentValue(element, value) {
+        var name = element ? element.nodeName.toLowerCase() : "", i;
+        if (name == "input" || name == "textarea") {
+            if (element.type == "radio" || (element.type == "checkbox" && element.value > "")) {
+                var checked = element.value == value;
+                if (checked != element.checked) {
+                    element.checked = checked;
+                    return true;
+                }
+            } else if (element.type == "checkbox") {
+                if (element.checked != value) {
+                    element.checked = value;
+                    return true;
+                }
+            } else {
+                if (element.value != value) {
+                    element.value = value;
+                    return true;
+                }
             }
         } else if (name == "select") {
             var options = element.options;
             i = options.length;
             element.selectedIndex = -1;
             while (i-- > 0) {
-                if (options[i].value == value) element.selectedIndex = i;
+                if (options[i].value == value) {
+                    element.selectedIndex = i;
+                    return true;
+                }
             }
         } else {
-            var html = "", acceptHTML = element.getAttribute("insertHTML");
+            var html,
+                acceptHTML = element.getAttribute("insertHTML");
             if (!value) {
                 html = acceptHTML ? "" : "&nbsp;";
             } else if (acceptHTML) {
                 html = value;
             } else {
-                var j = value ? (value = "" + value).length : 0, c;
-                for (i = 0; i < j; i++) {
-                    if ((c = value.charAt(i)) == '&') html += "&amp;";
-                    else if (c == '\n') html += "<br/>";
-                    else if (c == '>') html += "&gt;";
-                    else if (c == '<') html += "&lt;";
-                    else html += c;
+                html = textToHtml(value ? ""+value : "");
+            }
+            if (element.innerHTML != html) {
+                element.innerHTML = html;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    var entityCharCodes = { amp: 38, cent: 162, pound: 163, yen: 165, euro: 8364, sect: 167,
+        copy: 169, reg: 174, trade: 8482, gt: 60, lt: 62, nbsp: 32 };
+
+    /**
+     * Converts text into HTML markup
+     * @param text text
+     * @return {String}
+     */
+    function textToHtml(/*String*/text) {
+        var html = "",
+            j = text ? text.length : 0,
+            i,c;
+        for (i = 0; i < j; i++) {
+            if ((c = text.charAt(i)) == '&') html += "&amp;";
+            else if (c == '\n') html += "<br/>";
+            else if (c == '>') html += "&gt;";
+            else if (c == '<') html += "&lt;";
+            else html += c;
+        }
+        return html;
+    }
+
+    /**
+     * Converts HTML markup to text
+     * @param html
+     * @return {String}
+     */
+    function htmlToText(html) {
+        if (!html) return null;
+        var text = "",
+            lower = html.toLowerCase(),
+            j = html.length,
+            last = '',
+            ends;
+        for (var i = 0; i < j; i++) {
+            var c = html.charAt(i);
+            if (c == '&') {
+                // can by a special HTML entity, so find its ending character
+                ends = i+1;
+                var t;
+                while (ends < j && !((t=html.charAt(ends)) == ';' || t < '!' || t == '&' || t == '<')) ends++;
+                if (ends > i) {
+                    var entity = lower.substr(i + 1, ends - 1 - i);
+                    if (entity.charAt(0) == "#") {
+                        text += String.fromCharCode(parseInt(entity.substr(1)));
+                    } else {
+                        var charCode = entityCharCodes[entity];
+                        if (charCode) text += String.fromCharCode(charCode);
+                        else text += '&' + entity + ';';
+                    }
+                    i = ends;
+                    if (html.charAt(i)!=';') i--;
+                } else text += c;
+            } else if (c == '<') {
+                // there is a HTML tag
+                ends = html.indexOf('>', i);
+                if (ends > i) {
+                    // it could by a line break
+                    if (lower.substr(i + 1, 2) == 'br' && lower.charAt(i + 3) < 'a') text += "\n";
+                    i = ends;
+                } else text += c;
+            } else if (c < '!') {
+                //it is a white space, add it only if there is no whitespace before it
+                if (last >= '!') text += ' ';
+            } else text += c;
+
+            last = c;
+        }
+        return text;
+    }
+
+    /**
+     * Collects all HTML elements (excepts ignored one) mapped by instance
+     * @param instance
+     * @param ignoringElement
+     * @return {Array}
+     */
+    function syncIterator(/*Instance*/instance, ignoringElement) {
+        var ids = instance.__p[0];
+        if (ids) {
+            var i,
+                j = ids.length,
+                iterator = [];
+            for (i = 0; i < j; i++) {
+                var item = ids[i];
+                if (item.sync) {
+                    var element = document.getElementById(item.id);
+                    if (element && ignoringElement != element) {
+                        iterator.push({e: element, i: item});
+                    }
                 }
             }
-            element.innerHTML = html;
+            return iterator;
+        }
+        return [];
+    }
+
+    const MAXIMUM_SYNC_ITERATIONS = 1000;
+
+    /**
+     * Sets values from UI HTML element to parameters object and vice versa (specified by event)
+     * one instance
+     * @param instance instance object
+     * @param ignoringElement HTML element not to sync
+     * @param event defines event of synchronization (syncFromHTML or syncToHTML)
+     */
+    function sync(/*Instance*/instance, ignoringElement, event) {
+        var i,
+            iterator = syncIterator(instance, ignoringElement),
+            iterations = 0,
+            j = iterator.length;
+        for (i = 0; i < j; i++) {
+            var iteration = iterator[i],
+                valueChanged;
+            try {
+                valueChanged = event.isFromHTML
+                    ? setModelValue(iteration.e, iteration.i, instance)
+                    : setComponentValue(iteration.e, iteration.i.sync());
+            } catch (e) {
+                log("Can't set ID " + iteration.i.id, e);
+            }
+            if (valueChanged && iteration.i.onchange) {
+                try {
+                    iteration.i.onchange(event);
+                } catch (e) {
+                    log("Exception during invocation 'onchange' method of '" + iteration.i.id + "'", e);
+                }
+                if (iterations++ > MAXIMUM_SYNC_ITERATIONS) throw "There is a lot of synchronizations from '" + iteration.i.id + "'";
+                //sync is true, so starts iteration again
+                i = 0;
+            }
         }
     }
 
     /**
-     * syncComponentToHTML: private method for setting all values from parameters object to UI HTML element in
-     * one instance
-     * @param instance instance object
+     * Returns first HTML element for web element ID
+     * @param instance component instance
+     * @param id value or key of element
      */
-    function syncComponentToHTML(/*Instance*/ instance) {
-        var ids = instance.__p[0], parameters = instance.getParameters();
-        if (ids) {
-            var i,
-                j = ids.length;
-            for (i = 0; i < j; i++) {
-                var element = document.getElementById(ids[i].id);
-                if (element) {
-                    var val = ids[i].val;
-                    if (typeof(ids[i].key) == "string" && ids[i].key.substr(0, 11) == "parameters.") {
-                        try {
-                            val = !ids[i].key ? !ids[i].val ? null : ids[i].val : eval(ids[i].key);
-                        } catch (e) {
-                            val = e.message;
-                        }
-                    }
-                    if (val != null) {
-                        setComponentValue(element, ids[i].t, val);
-                    }
-                }
-            }
-        }
+    function getComponentElementById(/*Instance*/instance, id) {
+        var item = getComponentId(instance, id);
+        return item ? document.getElementById(item.id) : null;
     }
 
-    function Instance(/*String[]*/ids, factory, parameters) {
-        this.__p = [ids, parameters];
+    /**
+     * Returns array of all HTML elements for web element ID
+     * @param instance component instance
+     * @param id value or key of element
+     */
+    function getComponentElementsById(/*Instance*/instance, id) {
+        var ids = instance.__p[0], l = ids ? ids.length : 0, elements = [];
+        while (l-- > 0) {
+            var item = ids[l];
+            if (item.key == id) {
+                var element = document.getElementById(item.id);
+                if (element) elements.push(element);
+            }
+        }
+        return elements;
+    }
+
+    /**
+     * Returns the first component instance of componentName
+     * @param instance component instance object
+     * @param componentName name of the instance component factory
+     */
+    function firstInstanceOf(/*Instance*/instance, componentName) {
+        var children = instance.getChildren();
+        var j = children.length;
+        if (j == 0) return null;
+        if (!componentName) return children[0];
+        for (var i = 0; i < j; i++) if (children[i].factory.componentName == componentName) return children[i];
+        return null;
+    }
+
+    const SYNC_FROM_HTML_EVENT = {type: "synchronizeFromHTML", isFromHTML: true},
+        SYNC_TO_HTML_EVENT = {type: "synchronizeToHTML", isToHTML: true};
+
+
+    /**
+     * Constructor for instance object
+     * @param ids array od ID items
+     * @param children array of children instances
+     * @param factory factory function for Component
+     * @param parameters parameters (model) object
+     * @param parentElement parent HTML element
+     * @param parentComponent parent Instance component
+     * @constructor
+     */
+    function Instance(/*String[]*/ids, /*Instance[]*/children, /*function*/factory, /*Object*/parameters, parentElement, parentComponent) {
+        this.__p = [
+            ids /* array of marked elements*/,
+            parameters /* instance parameters*/,
+            parentComponent /*parent component*/,
+            children /*children components*/,
+            parentElement /*HTML element*/
+        ];
         this.factory = factory;
     }
 
-    Instance.prototype.addValidator = function (key, validator) {
-        Components._aCV(this, key, parameters, validator);
-    };
-
-    /**
-     * Sets all values from parameters object to UI HTML element
-     */
-    Instance.prototype.syncToHTML = function () {
-        syncComponentToHTML(this);
-    };
     /**
      * Returns reference to parameters object used in actual instance
      */
@@ -225,152 +493,163 @@ define(['web/Listeners', 'web/Constants'], function (Listeners, Constants) {
         return this.__p[1];
     };
 
+    /**
+     * Returns all children instances of this instance
+     */
+    Instance.prototype.getChildren = function () {
+        return this.__p[3];
+    };
+
 
     var nextId = 1;
+    /**
+     * Render new unique ID for HTML element and adds it configuration for the init() method
+     * @param conf configuration from the HTML parser
+     */
+    Instance.prototype.newId = function (conf) {
+        if (!conf) return null;
+        if (!conf.id) conf.id = "_rid" + nextId++;
+        var ids = this.__p[0];
+        ids.push(conf);
+        return conf.id;
+    };
+
+    /**
+     * Returns the first HTML element for given binding id
+     * @param id value or key of element (binding id)
+     */
+    Instance.prototype.getElementById = function (id) {
+        return getComponentElementById(this, id);
+    };
+
+    /**
+     * Returns array of elements for given binding id
+     * @param id value or key of element (binding id)
+     */
+    Instance.prototype.getElementsById = function (id) {
+        return getComponentElementsById(this, id);
+    };
+
+    /**
+     * Returns parent instance of this instance
+     */
+    Instance.prototype.getParent = function () {
+        return this.__p[2];
+    };
+
+    /**
+     * Returns last item ID for web element ID
+     * @param id value or key of element (binding id)
+     */
+    Instance.prototype.getItem = function (id) {
+        return getComponentId(this, id);
+    };
+    /**
+     * Returns all item IDs for web element ID
+     * @param id value or key of element (binding id)
+     */
+    Instance.prototype.getItems = function (id) {
+        return getComponentIds(this, id);
+    };
+
+    /**
+     * Recalls beforeCreate, create and afterCreate but using the same instance
+     * for repainting the component
+     */
+    Instance.prototype.reCreate = function () {
+        var /*Instance*/instance = this;
+        var parameters = instance.getParameters();
+        parameters.___i = instance;
+        open(instance.factory, instance, parameters, undefined, undefined);
+    };
+
+    /**
+     * Sets all values from UI HTML element to parameters object
+     */
+    Instance.prototype.syncFromHTML = function (ignoringElement) {
+        sync(this, ignoringElement, SYNC_FROM_HTML_EVENT);
+    };
+
+    /**
+     * Sets all values from parameters object to UI HTML element
+     */
+    Instance.prototype.syncToHTML = function (ignoringElement) {
+        sync(this, ignoringElement, SYNC_TO_HTML_EVENT);
+    };
+
+    /**
+     * Returns child instance of this instance
+     */
+    Instance.prototype.getChild = function (componentName) {
+        return firstInstanceOf(this, componentName);
+    };
+
+    /**
+     * Returns the HTML element of this instance
+     */
+    Instance.prototype.getElement = function () {
+        return this.__p[4];
+    };
 
     /**
      * Creates instance for new component
      * @param factory
      * @param parameters
      * @param parentElement
+     * @param parentComponent
      * @return Instance
      */
-    function createInstance(factory, parameters, parentElement) {
+    function createInstance(factory, parameters, parentElement, parentComponent) {
 
         //array for all HTML IDs used for this component
         var ids = [];
+        //array of all children instances
+        var children = [];
 
-        var /*Instance*/ instance = new Instance (ids, factory, parameters);
-
-        /**
-         * Sets values to key (if values != null) and runs parameters changes listeners
-         * @param keys parameters keys
-         * @param values array of values (null supported)
-         */
-        instance.changeParameters = function (keys, values) {
-            var changedKeys = values ? [] : keys;
-            if (values) {
-                var i = values.length;
-                while (i-- > 0) Components._cPS(parameters, keys[i], values[i], changedKeys);
-            }
-            Components._cPCh(instance, parameters, changedKeys);
-        };
-        /**
-         * Sets all values from UI HTML element to parameters object
-         */
-        instance.syncFromHTML = function () {
-            Components._sCFHTML(instance, parameters, document);
-        };
-        /**
-         * Render new unique ID for HTML element and adds it configuration for the init() method
-         * @param conf configuration from the HTML parser
-         */
-        instance.id = function (conf) {
-            if (!conf) return null;
-            conf.id = "_rid" + nextId++;
-            ids.push(conf);
-            return conf.id;
-        };
-        /**
-         * Returns last item ID for webJS ID
-         * @param id value or key of element (binding id)
-         */
-        instance.getItem = function (id) {
-            return Components.getComponentId(instance, id);
-        };
-        /**
-         * Returns all item IDs for webJS ID
-         * @param id value or key of element (binding id)
-         */
-        instance.getItems = function (id) {
-            return Components.getComponentIds(instance, id);
-        };
-        /**
-         * Returns the first HTML element for given binding id
-         * @param id value or key of element (binding id)
-         */
-        instance.getElementById = function (id) {
-            return Components.getComponentElementById(instance, document, id);
-        };
-        /**
-         * Returns array of elements for given binding id
-         * @param id value or key of element (binding id)
-         */
-        instance.getElementsById = function (id) {
-            return Components.getComponentElementsById(instance, document, id);
-        };
-        /**
-         * Returns array of elements for given binding id
-         * @param items items from getItem or getItems
-         */
-        instance.getElementsByItems = function (items) {
-            return Components.getComponentElementsByItems(instance, document, items);
-        };
-        /**
-         * Returns the HTML element of this instance
-         */
-        instance.getElement = function () {
-            return parentElement;
-        };
-        /**
-         * Returns parent instance of this instance
-         */
-        instance.getParent = function () {
-            return null;
-        };
-        /**
-         * Returns child instance of this instance
-         */
-        instance.getChild = function (componentName) {
-            return Components._fIOF(children, componentName);
+        if (typeof parameters.___i == "object") {
+            var oldInstance = parameters.___i;
+            delete parameters.___i;
+            oldInstance.__p[0] = ids;
+            oldInstance.__p[3] = children;
+            return oldInstance;
         }
-        /**
-         * Returns all children instances of this instance
-         */
-        instance.getChildren = function () {
-            return children;
-        };
-        /**
-         * Recalls beforeCreate, create and afterCreate but using the same instance
-         * for repainting the component
-         */
-        instance.reCreate = function () {
-            Components._rCI(instance, document, window);
-        };
-        instance.validate = function (id, callback) {
-            if (callback) callback([]);
-        };
 
-        Listeners.createModelListener(instance);
+        var /*Instance*/ instance = new Instance(ids, children, factory, parameters, parentElement, parentComponent);
+
+        //TODO: add this to Instance documentation
+        // You can extend instance to be able to handle model listeners and
+        //Listeners.createModelListener(instance);
+        //Validation.createValidator(instance);
 
         return instance;
     }
 
     /**
      * Opens dynamic page
-     * @param urlOrComponent name of page with path and parameters (e.g. "path/pageName?parameter1=value1&parameter2=value2")
+     * @param urlOrFactory name of page with path and parameters (e.g. "path/pageName?parameter1=value1&parameter2=value2")
      * @param target id of target element
      * @param customParameters parameters object (null is supported)
+     * @param parentComponent parent component
      * @param callBack parameters object (null is supported)
      */
-    function open(urlOrComponent, target, customParameters, callBack) {
-        if (typeof urlOrComponent == "string") {
-            var url = urlOrComponent;
+    function open(urlOrFactory, target, customParameters, callBack, parentComponent) {
+        var parameters = typeof customParameters != "object" || !customParameters ? {} : customParameters;
+
+        if (typeof urlOrFactory == "string") {
+            //urlOrFactory is URL string
 
             //prepares parameters object
-            var parametersIndex = url.indexOf("?");
+            var parametersIndex = urlOrFactory.indexOf("?");
             if (parametersIndex == -1) {
-                parametersIndex = url.length;
+                parametersIndex = urlOrFactory.length;
             }
 
             //extracts path name and page name from "name" parameter
-            var name = url.substr(0, parametersIndex);
-            var page = url.substr(0, parametersIndex);
-            var parameters = !customParameters ? {} : customParameters;
+            var name = urlOrFactory.substr(0, parametersIndex);
 
             //parse parameters and add to "parameters" object
-            if (parametersIndex + 2 < url.length) {
-                var arrOfParams = url.substr(parametersIndex + 1).split("&");
+            if (parametersIndex + 2 < urlOrFactory.length) {
+                var arrOfParams = urlOrFactory.substr(parametersIndex + 1).split("&");
                 var arrOfParamsIndex = arrOfParams.length;
                 while (arrOfParamsIndex-- > 0) {
                     var paramStr = arrOfParams[arrOfParamsIndex], paramSplitIndex = paramStr.indexOf("=");
@@ -383,24 +662,24 @@ define(['web/Listeners', 'web/Constants'], function (Listeners, Constants) {
             }
 
             require([name], function (factory) {
-                open(factory, target, parameters, callBack);
+                open(factory, target, parameters, callBack, parentComponent);
             });
 
             return;
-        } else if (!urlOrComponent || typeof (urlOrComponent.create) != "function") {
-            throw "Sorry, I do not know how to open '"+urlOrComponent+"' in target '"+target+"'.";
+        } else if (!urlOrFactory || typeof (urlOrFactory.create) != "function") {
+            throw "Sorry, I do not know how to open '" + urlOrFactory + "' in target '" + target + "'.";
         }
 
-        var factory = urlOrComponent;
+        //urlOrFactory is Factory function
 
         //1. prepare target HTML element
-        var targetIsComponent = false;//true if "target" is some instance object for some page
-        var element = target ? typeof(target) != "string" ? !(targetIsComponent = typeof(target['factory']) == "object") ? target.tagName ? target : null : target.getElement() : document.getElementById(target) : document.body;
-        if (!element) throw "Sorry, I can not open '"+factory.componentName+"' in target '"+target+"'.";
+        var targetIsComponent;//true if "target" is some instance object for some page
+        var element = target ? typeof(target) != "string" ? !(targetIsComponent = typeof(target.factory)== "function") ? target.tagName ? target : null : target.getElement() : document.getElementById(target) : document.body;
+        if (!element) throw "Sorry, I can not open '"+urlOrFactory.componentName+"' in target '"+target+"'.";
 
         //2. call listeners for opening new pages
         var listenerArguments = {
-            page: factory.componentName,
+            name: urlOrFactory.componentName,
             target: target,
             parameters: parameters
         };
@@ -415,50 +694,105 @@ define(['web/Listeners', 'web/Constants'], function (Listeners, Constants) {
 
             //6. create component instance
             Listeners.executeListeners("creatingWebComponent", listenerArguments);
-            var instance = factory.create(parameters, element);
-            initializeComponent(instance, null, parameters, element);
+            var instance = urlOrFactory.create(parameters, element, parentComponent);
+            var children = initializeComponent(instance);
+            if (parentComponent) {
+                //if this is a child of an element, add its reference to parentComponent
+                parentComponent.getChildren().push(instance);
+            }
+            var initializedChildren = 0;
 
-            //7. do something with children
-            //TODO
+            function finishOpening() {
+                //9. calls after create asynchronous methods
+                if (urlOrFactory.afterCreate) urlOrFactory.afterCreate(instance);
 
-            //8. calls after create asynchronous methods
-            if (factory.afterCreate) factory.afterCreate(instance);
+                //10. execute callback function for open page procedure
+                if (callBack) callBack(instance);
 
-            //9. call listeners for finishing new pages
-            Listeners.executeListeners("showedWebComponent", listenerArguments);
+                //11. call listeners for finishing new pages
+                Listeners.executeListeners("showedWebComponent", listenerArguments);
+            }
 
-            //10. do something with parent
-            //TODO
+            function childInitialized(child) {
+                //8. call listeners for finishing one child of many children
+                var childrenListenerArguments = {
+                    name: urlOrFactory.componentName,
+                    target: target,
+                    parameters: parameters,
+                    child: child
+                };
 
-            //11. execute callback function for open page procedure
-            if (callBack) callBack(instance);
+                Listeners.executeListeners("showedWebComponentChild", childrenListenerArguments);
+
+                if (++initializedChildren==children.length) finishOpening();
+            }
+
+            //7. opens children
+            if (children && children.length>0) {
+                for (var i = 0; i<children.length; i++) {
+                    (function(child){
+                        open(child.factory, child.element, child.parameters, childInitialized, instance);
+                    })(children[i]);
+                }
+            } else {
+                finishOpening();
+            }
 
         }
 
         //5. calls before create asynchronous methods
-        if (!factory.beforeCreate) createInstance();
-        else factory.beforeCreate(parameters, createInstance);
+        if (!urlOrFactory.beforeCreate) createInstance();
+        else urlOrFactory.beforeCreate(parameters, createInstance);
     }
 
+    /**
+     * Sets class attribute on element
+     * @param element HTML element
+     * @param className class name
+     */
     function setClass(element, className) {
         element.className = className;
     }
 
-    function setStyle(element, style) {
-        //TODO sets style
+    /**
+     * Adds CSS style to element
+     * @param element HTML element
+     * @param css CSS styles as string
+     */
+    function setStyle(element, css) {
+        var style = element.style;
+        var styles = css.split(';');
+        for (var i = 0; i < styles.length; i++) {
+            var p = styles[i].split(':');
+            if (p.length == 2) {
+                var name = p[0].replace(/^\s+|\s+$/g, '');
+                var value = p[1].replace(/^\s+|\s+$/g, '');
+                var l;
+                while ((l = name.indexOf('-')) != -1) name = (l > 0 ? name.substr(0, l) : '') + ("" + name.charAt(l + 1)).toUpperCase() + name.substr(l + 2);
+                style[name] = value;
+            }
+
+        }
     }
 
+    /**
+     * Sets call back function as event handler
+     * @param element   HTML element
+     * @param eventName event name
+     * @param callBack  call back function
+     */
     function setEvent(element, eventName, callBack) {
         element['on'+eventName] = callBack;
     }
 
-
-    //publish some functions as module
+    //publish some functions
     Components.open = open;
     Components.createInstance = createInstance;
     Components.setClass = setClass;
     Components.setStyle = setStyle;
     Components.setEvent = setEvent;
+    Components.htmlToText = htmlToText;
+    Components.textToHtml = textToHtml;
 
     return Components;
 

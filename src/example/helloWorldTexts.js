@@ -1,3 +1,3 @@
-define(["parse", "web/Localization"], function (parse) {
-    return parse('example/helloWorldTexts.properties', ["en_US"]);
+define(["parse", "web/Resources"], function (parse, Resources) {
+    return parse('example/helloWorldTexts.properties', Resources.locales("en_US"));
 });

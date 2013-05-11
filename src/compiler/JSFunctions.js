@@ -85,7 +85,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                         j = l;
                     }
                 } else if (cs != null && c == '(') {
-                    var /*String*/ last = js.substring(Math.max(j - 20, 0), j - 1).trim();
+                    var /*String*/ last = Strings.trim(js.substring(Math.max(j - 20, 0), j - 1));
                     var /*boolean*/ isCall = Strings.endsWith(last, ".createRequest");
                     if (!isCall) isCall = Strings.endsWith(last, ".request");
                     if (isCall || Strings.endsWith(last, ".openPage")) {
@@ -95,7 +95,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                             t += c;
                             k++;
                         }
-                        t = t.trim();
+                        t = Strings.trim(t);
                         if (isCall) cs.addCall(t);
                         else cs.addPage(t);
                     }
@@ -151,7 +151,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                     if (name.length == 0) {
                         var /*int*/ i = 0;
                         while (map.containsKey(name = "anonymous" + i)) i++;
-                        if (cs != null) cs.addError("Unsupported anonymous function '" + name + "' found.");
+                        if (cs != null) cs.addWarning("Unsupported anonymous function '" + name + "' found.");
                     }
                     if (map.containsKey(name)) {
                         if (cs != null) cs.addError("There in not only one '" + name + "' function.");
@@ -189,7 +189,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
         return result;
     }
 
-    function extractSpecialTags(/*String*/ htmlJS, /*DependenciesMapper*/ dependenciesMapper, /*String*/ before, /*String*/ after, /*String 1*/ stringChar) {
+    function extractSpecialTags(/*String*/ htmlJS, /*DependenciesMapper*/ dependenciesMapper, /*String*/ Fbefore, /*String*/ after, /*String 1*/ stringChar) {
         var /*int*/ i = 0;
         while ((i = htmlJS.indexOf("@{", i) + 2) != 1) {
             var /*int*/ end = Brackets.findEndingBracket(htmlJS, i - 1, '{', '}');
@@ -285,7 +285,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                             var /*int*/ endIndex = js.indexOf(':', fromIndex);
                             if (endIndex >= toIndex)
                                 throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
-                            attName = js.substring(fromIndex, endIndex).trim() + ": ";
+                            attName = Strings.trim(js.substring(fromIndex, endIndex)) + ": ";
                             if (attName.length == 2)
                                 throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
                             fromIndex = endIndex + 1;
@@ -333,7 +333,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                         var /*int*/ endIndex = js.indexOf(':', fromIndex);
                         if (endIndex == -1 || endIndex >= toIndex)
                             throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
-                        attName = js.substring(fromIndex, endIndex).trim() + ": ";
+                        attName = Strings.trim(js.substring(fromIndex, endIndex)) + ": ";
                         if (attName.length == 2)
                             throw "Wrong JSON object '" + js.substring(fromIndex, toIndex) + "'";
                         fromIndex = endIndex + 1;

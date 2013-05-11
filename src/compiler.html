@@ -5,6 +5,7 @@
     <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
     <title>webJS Compiler</title>
     <script src="../lib/require.js"></script>
+    <script src="../lib/SaveFile.js"></script>
     <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript" charset="utf-8"></script>
     <script>
 
@@ -98,7 +99,7 @@
         }
 
         function resizeName(styleName, w) {
-            styleName['width'] = (400 < w ? 310 : 2*w-490)+"px";
+            styleName['width'] = (400 < w ? 230 : 2*w-570)+"px";
         }
 
         function resizeLeftRight(size) {
@@ -269,6 +270,10 @@
             localStorage.setItem("web_parser_lastAceTheme", theme);
         }
 
+        function getFileName() {
+            return document.getElementById("name").value;
+        }
+
         function init() {
             resize();
             syncSwap();
@@ -346,6 +351,15 @@
             }
         }
 
+    function saveDest() {
+        var blob = new Blob([js()], {type: "text/javascript;charset=utf-8"});
+        var fileName = getFileName();
+        var point = fileName.lastIndexOf('.');
+        if (point > 0) fileName = fileName.substr(0, point);
+        else if (fileName=="") fileName = "empty";
+        saveAs(blob, fileName + ".js");
+    }
+
     </script>
     <style>
         .flow {
@@ -370,7 +384,7 @@
     <input type="file" id="file" class="flow" style="z-index: 100;opacity: 0.01">
        <button onclick="doIt()">src to JS</button></span>
 
-    <span style="background: #5dc42c;padding: 7px 2px 7px 2px;border-radius: 6px;"><button onclick="run()">run</button></span>
+    <span style="background: #5dc42c;padding: 7px 2px 7px 2px;border-radius: 6px;"><button onclick="run()">run</button><button onclick="saveDest()">save</button></span>
 
     <span style="background: #bab5b9;padding: 7px 2px 7px 4px;border-radius: 6px;">Show
     <button onclick="swap(-0.99)" id="s1">src</button><button onclick="swap(0)" id="s2">1:1</button><button onclick="swap(0.99)" id="s3">JS</button><select id="theme" onchange="aceTheme()">

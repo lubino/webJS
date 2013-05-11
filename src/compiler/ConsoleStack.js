@@ -172,7 +172,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
     }
 
     function addWarning(/*String*/ e) {
-        this.logError(e);
+        if (this.logger) this.logger.log("Parser warning:", e);
     }
 
     function addError(/*String*/ e) {
