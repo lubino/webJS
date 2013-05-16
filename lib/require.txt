@@ -12,3 +12,16 @@ It is only 295 bytes length and it implements two basic methods of RequireJS:
 
 So if you are using require.js and you are building your final JavaScript with r.js, you don't have to include
 the big one version "require.js", you can use "require.r.js".
+
+require.r.js supports:
+- synchronous module accessor:
+ var moduleA = require('dir/moduleA');
+
+- asynchronous module accessor:
+ require(['dir/moduleA', 'dir/moduleB'], function (moduleA, moduleB) { ... });
+
+- unsorted definition order:
+ define('dir/moduleB', ['dir/moduleA'], function (moduleA) { ... });
+ define('dir/moduleA', [], function () { ... });
+ var moduleA = require('dir/moduleA');
+ ...
