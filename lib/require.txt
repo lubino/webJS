@@ -23,5 +23,7 @@ require.r.js supports:
 - unsorted definition order:
  define('dir/moduleB', ['dir/moduleA'], function (moduleA) { ... });
  define('dir/moduleA', [], function () { ... });
- var moduleA = require('dir/moduleA');
+
+ //moduleB depend on moduleB which is defined after moduleA, but it doesn't matter
+ var moduleB = require('dir/moduleB');
  ...
