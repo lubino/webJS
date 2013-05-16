@@ -1,0 +1,14 @@
+RequireJS is a JavaScript file and module loader. It is optimized for in-browser use,
+but it can be used in other JavaScript environments, like Rhino and Node.
+Using a modular script loader like RequireJS will improve the speed and quality of your code.
+
+r.js is a command line tool for running JavaScript scripts that use the Asynchronous Module Definition API (AMD)
+for declaring and using JavaScript modules and regular JavaScript script files.
+
+require.r.js is a smaller version of require.js, which can be used for composed AMDs with r.js command line tool.
+It is only 295 bytes length and it implements two basic methods of RequireJS:
+- define
+- require
+
+So if you are using require.js and you are building your final JavaScript with r.js, you don't have to include
+the big one version "require.js", you can use "require.r.js".
