@@ -24,6 +24,6 @@ require.r.js supports:
  define('dir/moduleB', ['dir/moduleA'], function (moduleA) { ... });
  define('dir/moduleA', [], function () { ... });
 
- //moduleB depend on moduleB which is defined after moduleA, but it doesn't matter
+ //moduleB depends on moduleB which is defined after moduleA, but it doesn't matter
  var moduleB = require('dir/moduleB');
  ...
