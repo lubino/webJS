@@ -48,7 +48,8 @@ define(['web/Listeners'], function (Listeners) {
                     if (!children) children = [];
                     if (!item.key) item.key = "component." + item.component.name;
                     element.setAttribute("componentName", item.component.name);
-                    children.push({factory:item.component.factory, parameters:item.component.parameters || {}, element:element});
+                    item.instance = {factory:item.component.factory, parameters:item.component.parameters || {}, element:element};
+                    children.push(item.instance);
                     delete item.component;
                 }
                 if (change) {
@@ -59,6 +60,13 @@ define(['web/Listeners'], function (Listeners) {
                 }
                 if (item.onload) {
                     element.onload = createElementEventCallBack(item.onload, instance, element);
+                }
+                //adds other event handlers
+                for (var field in item) {
+                    field = ("" + field).toLowerCase();
+                    if (field.substr(0, 2)=="on" && field!="onload" && field!="onchange" && field!="onclick") {
+                        element[field] = createElementEventCallBack(item[field], instance, element);
+                    }
                 }
                 if (item.forId) {
                     var forItem = getComponentId(instance, item.forId);
@@ -590,6 +598,13 @@ define(['web/Listeners'], function (Listeners) {
      */
     Instance.prototype.getElement = function () {
         return this.__p[4];
+    };
+
+    /**
+     * Destroys this instance
+     */
+    Instance.prototype.destroy = function () {
+        return destroyComponent(this);
     };
 
     /**
