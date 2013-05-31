@@ -20,8 +20,8 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             "     * @param customParameters parameters for component\n" +
             "     * @param callBack call back function\n" +
             "     */\n" +
-            "    function ${constructorName}(target, customParameters, callBack) {\n" +
-            "       ${components}.open(${constructorName}, target, customParameters, callBack);\n" +
+            "    function ${constructorName}(target, customParameters, callBack, parent) {\n" +
+            "       ${components}.open(${constructorName}, target, customParameters, callBack, parent);\n" +
             "    }\n" +
             "\n" +
             "    /**\n" +
@@ -110,7 +110,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
                 result.add(new ParsedJS(ctxJsEmpty, ")", ctxJsValue, null));
                 return result;
             } else if (type=='$') {
-                return toJS(value.$c, ctxJsValue, dependencies);
+                return toJS(['('].concat(value.$c,[')']), ctxJsValue, dependencies);
             }
             throw "Sorry, unknown special tag '"+type+"'.";
         };

@@ -72,7 +72,7 @@ define(['compiler/Strings'], function (Strings) {
                     } else {
                         var /*String*/ key = Strings.trim(line.substring(0, eq));
                         var /*String*/ value = Strings.trim(line.substring(eq + 1));
-                        var useQuotes = Strings.toJSName(key) == key;
+                        var useQuotes = Strings.toJSName(key) != key;
                         if (isNotFirst) parameters.keys += ',';
                         else isNotFirst = true;
                         if (parameters.keys > "") parameters.keys += "\n      ";

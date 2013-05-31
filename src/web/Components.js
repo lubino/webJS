@@ -253,8 +253,9 @@ define(['web/Listeners'], function (Listeners) {
                     return true;
                 }
             } else {
-                if (element.value != value) {
-                    element.value = value;
+                var text = value === undefined || value === null ? "" : value;
+                if (element.value != text) {
+                    element.value = text;
                     return true;
                 }
             }

@@ -75,6 +75,7 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
 
         //noinspection JSValidateTypes
         var /*ConsoleStack*/ cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, {log: log});
+        cs.start();
 
         var out = "";
         //noinspection JSValidateTypes
