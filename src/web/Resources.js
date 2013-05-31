@@ -76,6 +76,14 @@ define([], function () {
     }
 
     /**
+     * Returns actual locale
+     * @return {String} actual locale
+     */
+    function getLocale() {
+        return actualLocale;
+    }
+
+    /**
      * Validates and returns locales as array
      * @return {String[]} array of validated locales
      */
@@ -101,6 +109,7 @@ define([], function () {
         locales: locales,
         getterFor: getterFor,
         setLocale: setLocale,
+        getLocale: getLocale,
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
