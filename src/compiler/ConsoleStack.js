@@ -26,7 +26,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
                 s+=7;
                 while (s<l && line.charAt(s)==' ') s++;
                 var /*int*/ a=s;
-                while (s<l && line.charAt(s)>32) s++;
+                while (s<l && line.charAt(s)>' ') s++;
                 if (!paramsMap) paramsMap = new Map();
                 var /*String*/ key = line.substring(a, s);
                 if (paramsMap.put(key, Strings.trim(line.substring(s)))!=null && cs != null) {
@@ -42,7 +42,7 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
                 s+=8;
                 while (s<l && line.charAt(s)==' ') s++;
                 var /*int*/ b=s;
-                while (s<l && line.charAt(s)>32) s++;
+                while (s<l && line.charAt(s)>' ') s++;
                 if (throwsMap == null) throwsMap = new Map();
                 throwsMap.put(line.substring(b, s), Strings.trim(line.substring(s)));
             } else {
