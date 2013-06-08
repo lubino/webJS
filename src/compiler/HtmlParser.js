@@ -46,6 +46,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             "    ${hasBeforeCreate}${constructorName}.beforeCreate = beforeCreate;\n" +
             "    ${constructorName}.create = create;\n" +
             "    ${hasAfterCreate}${constructorName}.afterCreate = afterCreate;\n" +
+            "    ${hasOnDestroy}${constructorName}.onDestroy = onDestroy;\n" +
             "    ${constructorName}.componentName = ${jsName};\n" +
             "  return ${constructorName};\n" +
             "  }";
@@ -61,6 +62,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             css: "",
             hasBeforeCreate: "//",
             hasAfterCreate: "//",
+            hasOnDestroy: "//",
             components: "Components"
         };
 
@@ -189,6 +191,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             JSFunctions.parseFunctions(functions, parameters.head, cs);
             if (functions.containsKey("beforeCreate")) parameters.hasBeforeCreate = "";
             if (functions.containsKey("afterCreate")) parameters.hasAfterCreate = "";
+            if (functions.containsKey("onDestroy")) parameters.hasOnDestroy = "";
             html.add(END_PARSED_JS);
             title.add(END_PARSED_JS);
             parameters.html = html.value;
