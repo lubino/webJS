@@ -95,7 +95,7 @@ define(['web/Listeners'], function (Listeners) {
     function createElementEventCallBack(func, /*Instance*/instance, element) {
         return function (event) {
             instance.syncFromHTML();
-            func(event);
+            func(event, element);
             instance.syncToHTML(element);
         };
     }
@@ -446,8 +446,8 @@ define(['web/Listeners'], function (Listeners) {
      */
     function getComponentElementsById(/*Instance*/instance, id) {
         var ids = instance.__p[0], l = ids ? ids.length : 0, elements = [];
-        while (l-- > 0) {
-            var item = ids[l];
+        for (var i = 0; i < l; i++) {
+            var item = ids[i];
             if (item.key == id) {
                 var element = document.getElementById(item.id);
                 if (element) elements.push(element);

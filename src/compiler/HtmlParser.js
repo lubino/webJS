@@ -342,7 +342,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
                     attributes.remove(name);
                 } else if (Strings.startsWith(nameLowerCase, "on")) {
                     if (!id) id = new Map();
-                    var eventFunction = "function (event) {"+toJS(value.$c, ctxJs,  dependencies).value+"}";
+                    var eventFunction = "function (event, element) {"+toJS(value.$c, ctxJs,  dependencies).value+"}";
                     id.put(nameLowerCase, eventFunction);
                     attributes.remove(name);
                 }
