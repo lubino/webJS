@@ -3,7 +3,7 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
     function build(params, cs, file, log) {
 
         var runParameters = parseArgs(params);
-        if (!runParameters.destination) {
+        if (!runParameters.destination && (!runParameters.replaceFile || !runParameters.contentFile)) {
             log("\n" +
                 "Usage: node r.js -lib w.js [options] -source SOURCE_DIR -dest DESTINATION_DIR" +
                 "\n" +
@@ -27,87 +27,101 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                 "  -f                   Follow. The program will not terminate after compiling all the files, but\n" +
                 "                       will enter an endless loop, wherein it waits for file changes.\n" +
                 "\n" +
+                "Replace usage: node r.js -lib w.js [options] -replace DESTINATION_FILE -with SOURCE_FILE\n" +
+                "\n" +
+                "which replaces string '/*REQUIRE_BUILD*/' in SOURCE_FILE with content in DESTINATION_FILE\n" +
+                "where options include the same options parameters as in first case." +
+                "\n" +
                 "Author: Lubos Strapko (https://github.com/lubino)");
             throw "Required start parameters not included!";
         }
 
-        var files = [];
-        var filter = {
-            include: /(\.htm(l)?)|(\.properties)$/g
-        };
-        if (runParameters.exclude) filter.exclude = new RegExp(runParameters.exclude);
-        var i;
-        for (i = 0; i < runParameters.sources.length; i++) {
-            var source = Strings.toPath(runParameters.sources[i]);
-            var toAdd = file.getFilteredFileList(source, filter, true, false);
-            if (source.charAt(source.length - 1) != '/') source += '/';
-            for (var l = 0; l < toAdd.length; l++) {
-                files.push({file: toAdd[l], name: toAdd[l].replace(source, "")});
+        if (runParameters.destination) {
+            var files = [];
+            var filter = {
+                include: /(\.htm(l)?)|(\.properties)$/g
+            };
+            if (runParameters.exclude) filter.exclude = new RegExp(runParameters.exclude);
+            var i;
+            for (i = 0; i < runParameters.sources.length; i++) {
+                var source = Strings.toPath(runParameters.sources[i]);
+                var toAdd = file.getFilteredFileList(source, filter, true, false);
+                if (source.charAt(source.length - 1) != '/') source += '/';
+                for (var l = 0; l < toAdd.length; l++) {
+                    files.push({file: toAdd[l], name: toAdd[l].replace(source, "")});
+                }
             }
-        }
 
-        var destination = Strings.toPath(runParameters.destination);
-        if (!Strings.endsWith(destination, '/')) destination += '/';
+            var destination = Strings.toPath(runParameters.destination);
+            if (!Strings.endsWith(destination, '/')) destination += '/';
 
-        //noinspection JSValidateTypes
-        var /*Map*/ propertiesMap = new Map(), outs;
-        var /*DependenciesMapper*/ dependencies;
-        for (i = 0; i < files.length; i++) {
             //noinspection JSValidateTypes
-            dependencies = new DependenciesMapper();
-            //noinspection JSValidateTypes
-            var /*InputStream*/ input = new InputStream(file.readFile(files[i].file, runParameters.inputCharset));
-            var fileName = files[i].name;
-            var name;
-            var type = parseType(fileName);
-            if (type == 2) {
-                var localeIndex = fileName.indexOf('_');
-                if (localeIndex > 0) {
-                    name = fileName.substr(0, localeIndex);
-                    fileName = name + ".js";
-                } else {
+            var /*Map*/ propertiesMap = new Map(), outs;
+            var /*DependenciesMapper*/ dependencies;
+            for (i = 0; i < files.length; i++) {
+                //noinspection JSValidateTypes
+                dependencies = new DependenciesMapper();
+                //noinspection JSValidateTypes
+                var /*InputStream*/ input = new InputStream(file.readFile(files[i].file, runParameters.inputCharset));
+                var fileName = files[i].name;
+                var name;
+                var type = parseType(fileName);
+                if (type == 2) {
+                    var localeIndex = fileName.indexOf('_');
+                    if (localeIndex > 0) {
+                        name = fileName.substr(0, localeIndex);
+                        fileName = name + ".js";
+                    } else {
+                        name = fileName.substr(0, fileName.lastIndexOf('.'));
+                        fileName = name + ".js";
+                    }
+
+                    var out = PropertiesParser.parseProperties(name, input, dependencies, cs, runParameters);
+
+                    outs = propertiesMap.get(name);
+                    if (!outs) {
+                        outs = [out];
+                        propertiesMap.put(name, outs);
+                    } else {
+                        outs.push(out);
+                    }
+                    outs.dependencies = dependencies;
+                    //containsKey
+                } else if (type == 1) {
                     name = fileName.substr(0, fileName.lastIndexOf('.'));
                     fileName = name + ".js";
-                }
-
-                var out = PropertiesParser.parseProperties(name, input, dependencies, cs, runParameters);
-
-                outs = propertiesMap.get(name);
-                if (!outs) {
-                    outs = [out];
-                    propertiesMap.put(name, outs);
+                    log(i + ": " + files[i].name + " (" + destination + fileName + ")");
+                    //noinspection JSValidateTypes
+                    var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
+                    var js = parser.parse(input, cs);
+                    var requireJS_Definition = HtmlParser.doRequireModule(js, dependencies);
+                    file.saveFile(destination + fileName, requireJS_Definition, runParameters.outputCharset);
                 } else {
-                    outs.push(out);
+                    throw "Unknown file extension '" + fileName + "'";
                 }
-                outs.dependencies = dependencies;
-                //containsKey
-            } else if (type==1) {
-                name = fileName.substr(0, fileName.lastIndexOf('.'));
-                fileName = name + ".js";
-                log(i + ": " + files[i].name + " (" + destination + fileName + ")");
-                //noinspection JSValidateTypes
-                var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
-                var js = parser.parse(input, cs);
-                var requireJS_Definition = HtmlParser.doRequireModule(js, dependencies);
-                file.saveFile(destination + fileName, requireJS_Definition, runParameters.outputCharset);
-            } else {
-                throw "Unknown file extension '"+fileName+"'";
+            }
+
+            var names = propertiesMap.keys();
+            var lineSeparator = file.getLineSeparator();
+            for (i = 0; i < names.length; i++) {
+                outs = propertiesMap.get(names[i]);
+                var result = "";
+                for (var k = 0; k < outs.length; k++) {
+                    if (!result) result = outs[k];
+                    else result += lineSeparator + outs[k];
+                }
+                log(i + ": " + names[i] + " (" + destination + names[i] + ")");
+                result = PropertiesParser.finishProperties(name, result, dependencies);
+
+                file.saveFile(destination + names[i] + ".js", PropertiesParser.doRequireModule(result, dependencies), runParameters.outputCharset);
             }
         }
 
-        var names = propertiesMap.keys();
-        var lineSeparator = file.getLineSeparator();
-        for (i = 0; i < names.length; i++) {
-            outs = propertiesMap.get(names[i]);
-            var result = "";
-            for (var k = 0; k < outs.length; k++) {
-                if (!result) result = outs[k];
-                else result += lineSeparator + outs[k];
-            }
-            log(i + ": " + names[i] + " (" + destination + names[i] + ")");
-            result = PropertiesParser.finishProperties(name, result, dependencies);
-
-            file.saveFile(destination + names[i] + ".js", PropertiesParser.doRequireModule(result, dependencies), runParameters.outputCharset);
+        if (runParameters.replaceFile && runParameters.contentFile) {
+            var /*String*/ replaceFile = file.readFile(runParameters.replaceFile, runParameters.inputCharset);
+            var /*String*/ content = file.readFile(runParameters.contentFile, runParameters.inputCharset);
+            replaceFile = replaceFile.replace('/*REQUIRE_BUILD*/', content);
+            file.saveFile(runParameters.replaceFile, replaceFile, runParameters.outputCharset);
         }
     }
 
@@ -134,6 +148,10 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                             result.cp.push(paths[j]);
                         }
                     }
+                } else if (args[i] == "-replace") {
+                    result.replaceFile = args[++i];
+                } else if (args[i] == "-with") {
+                    result.contentFile = args[++i];
                 } else if (args[i] == "-dest")
                     result.destination = args[++i];
                 else if (args[i] == "-safeValue")
