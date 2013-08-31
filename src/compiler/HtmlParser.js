@@ -16,23 +16,24 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             "    //--------- start of body tag --------- \n" +
             "    /**\n" +
             "     * Opens component '${name}'\n" +
-            "     * @param target name of ID or element where to open\n" +
-            "     * @param customParameters parameters for component\n" +
+            "     * @param target name of ID or element where to open (or null)\n" +
+            "     * @param customParameters parameters for component(or null)\n" +
+            "     * @param parentInstance instance of parent component (or null)\n" +
             "     * @param callBack call back function\n" +
             "     */\n" +
-            "    function ${constructorName}(target, customParameters, callBack, parent) {\n" +
-            "       ${components}.open(${constructorName}, target, customParameters, callBack, parent);\n" +
+            "    function ${constructorName}(target, customParameters, parentInstance, callBack) {\n" +
+            "       ${components}.open(${constructorName}, target, customParameters, parentInstance, callBack);\n" +
             "    }\n" +
             "\n" +
             "    /**\n" +
             "     * Creates instance of '${name}' component and renders HTML content for it.\n" +
             "     * @param parameters global reference for all data\n" +
-            "     * @param body reference to HTML element\n" +
-            "     * @param parentComponent reference parent component of this child or null\n" +
+            "     * @param body reference to HTML element (or null)\n" +
+            "     * @param parentInstance reference to instance of parent component for this child (or null)\n" +
             "     * @return new instance of '${name}' component\n" +
             "     */\n" +
-            "    function create(parameters, body, parentComponent) {\n" +
-            "       var instance = ${createInstance}(${constructorName}, parameters, body, parentComponent), html='';\n" +
+            "    function create(parameters, body, parentInstance) {\n" +
+            "       var instance = ${createInstance}(${constructorName}, parameters, body, parentInstance), html='';\n" +
             "       ${html}\n" +
             "       body.innerHTML = html;" +
             "       ${css}" +
@@ -96,15 +97,21 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
 
         this.parseSpecial = function (value, type) {
             if (type == '@') {
-                var iO;
-                var v = value.$c[0];
-                if (typeof v != "string" || (iO = v.indexOf('.'))<1) {
-                    throw "Sorry, special tag '@{fileName.propertyName}' must have constant fileName (not variable).";
+                var iO, valuesIndex,
+                     v = value.$c[0];
+                if (typeof v != "string" || (valuesIndex=v.indexOf(':')+1)==1 || (iO = v.indexOf('.', valuesIndex))<valuesIndex+1) {
+                    throw "Sorry, special tag '@{valuesObject:fileName.propertyName}' must have constant fileName (not variable). The valuesObject is not mandatory, but also must have constant name."+iO;
                 }
-                var moduleName = v.substr(0, iO);
-                var key = iO+2<v.length ? v.substr(iO + 1) : "";
-                var result = new ParsedJS(ctxJsValue, dependencies.get(moduleName) + "(", ctxJsEmpty, null);
-                if (key>"") result.add(key);
+                var values = valuesIndex ? v.substr(0, valuesIndex-1) : null,
+                    moduleName = v.substr(valuesIndex, iO),
+                    key = iO+2<v.length ? v.substr(iO + 1) : "",
+                    result = new ParsedJS(ctxJsValue, dependencies.get(moduleName) + "(", ctxJsEmpty, null);
+                if (key>"") {
+                    if (values) {
+                        result.add(key);
+                        result.add(new ParsedJS(ctxJsEmpty, ","+values, ctxJsValue, null));
+                    } else result.add(key);
+                }
 
                 if (value.$c.length>1) {
                     result.add(toJS(value.$c.slice(1), ctxJsString, dependencies));

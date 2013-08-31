@@ -481,14 +481,14 @@ define(['web/Listeners'], function (Listeners) {
      * @param factory factory function for Component
      * @param parameters parameters (model) object
      * @param parentElement parent HTML element
-     * @param parentComponent parent Instance component
+     * @param parentInstance parent Instance component
      * @constructor
      */
-    function Instance(/*String[]*/ids, /*Instance[]*/children, /*function*/factory, /*Object*/parameters, parentElement, parentComponent) {
+    function Instance(/*String[]*/ids, /*Instance[]*/children, /*function*/factory, /*Object*/parameters, parentElement, parentInstance) {
         this.__p = [
             ids /* array of marked elements*/,
             parameters /* instance parameters*/,
-            parentComponent /*parent component*/,
+            parentInstance /*parent component instance*/,
             children /*children components*/,
             parentElement /*HTML element*/
         ];
@@ -612,10 +612,10 @@ define(['web/Listeners'], function (Listeners) {
      * @param factory
      * @param parameters
      * @param parentElement
-     * @param parentComponent
+     * @param parentInstance
      * @return Instance
      */
-    function createInstance(factory, parameters, parentElement, parentComponent) {
+    function createInstance(factory, parameters, parentElement, parentInstance) {
 
         //array for all HTML IDs used for this component
         var ids = [];
@@ -630,7 +630,7 @@ define(['web/Listeners'], function (Listeners) {
             return oldInstance;
         }
 
-        var /*Instance*/ instance = new Instance(ids, children, factory, parameters, parentElement, parentComponent);
+        var /*Instance*/ instance = new Instance(ids, children, factory, parameters, parentElement, parentInstance);
 
         //TODO: add this to Instance documentation
         // You can extend instance to be able to handle model listeners and
@@ -645,10 +645,10 @@ define(['web/Listeners'], function (Listeners) {
      * @param urlOrFactory name of page with path and parameters (e.g. "path/pageName?parameter1=value1&parameter2=value2")
      * @param target id of target element
      * @param customParameters parameters object (null is supported)
-     * @param parentComponent parent component
+     * @param parentInstance parent component
      * @param callBack parameters object (null is supported)
      */
-    function open(urlOrFactory, target, customParameters, callBack, parentComponent) {
+    function open(urlOrFactory, target, customParameters, parentInstance, callBack) {
         var parameters = typeof customParameters != "object" || !customParameters ? {} : customParameters;
 
         if (typeof urlOrFactory == "string") {
@@ -678,12 +678,19 @@ define(['web/Listeners'], function (Listeners) {
             }
 
             require([name], function (factory) {
-                open(factory, target, parameters, callBack, parentComponent);
+                open(factory, target, parameters, parentInstance, callBack);
             });
 
             return;
         } else if (!urlOrFactory || typeof (urlOrFactory.create) != "function") {
             throw "Sorry, I do not know how to open '" + urlOrFactory + "' in target '" + target + "'.";
+        }
+
+        //test parentInstance and callBack for previous versions
+        if (typeof parentInstance == "function") {
+            var realParentComponent = callBack;
+            callBack = parentInstance;
+            parentInstance = realParentComponent;
         }
 
         //urlOrFactory is Factory function
@@ -710,11 +717,11 @@ define(['web/Listeners'], function (Listeners) {
 
             //6. create component instance
             Listeners.executeListeners("creatingWebComponent", listenerArguments);
-            var instance = urlOrFactory.create(parameters, element, parentComponent);
+            var instance = urlOrFactory.create(parameters, element, parentInstance);
             var children = initializeComponent(instance);
-            if (parentComponent) {
-                //if this is a child of an element, add its reference to parentComponent
-                parentComponent.getChildren().push(instance);
+            if (parentInstance) {
+                //if this is a child of an element, add its reference to parentInstance
+                parentInstance.getChildren().push(instance);
             }
             var initializedChildren = 0;
 
@@ -747,7 +754,7 @@ define(['web/Listeners'], function (Listeners) {
             if (children && children.length>0) {
                 for (var i = 0; i<children.length; i++) {
                     (function(child){
-                        open(child.factory, child.element, child.parameters, childInitialized, instance);
+                        open(child.factory, child.element, child.parameters, instance, childInitialized);
                     })(children[i]);
                 }
             } else {
