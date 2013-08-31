@@ -2,6 +2,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
 
     var runConfig;
     var componentsName;
+    var ignoredNames;
 
     function HtmlParser(/*String*/name, /*DependenciesMapper*/dependencies, runParameters) {
 
@@ -73,6 +74,9 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
         var title = new ParsedJS(ctxJsEmpty, "", ctxJs, {nl:lineSplitter,v:"instance.title = "});
 
         componentsName = runConfig.webDir + parameters.components;
+        ignoredNames = { instance: 1, parameters:1, body: 1, parentInstance:1, event: 1, element:1,
+            beforeCreate:1, create:1, afterCreate:1, onDestroy:1};
+        ignoredNames[parameters.components]=1;
 
         dependencies.init(jsNameGetter);
         dependencies.put(name, parameters.constructorName);
@@ -329,6 +333,37 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
         id.put("sync", wrapWithMap(wrapperMap, "function (__val) {if (typeof __val != 'undefined') "+s+" = __val; return "+s+";}"));
     });
 
+    function arrayContains(a, obj) {
+        var i = a.length;
+        while (i-->0) if (a[i] === obj) return true;
+        return false;
+    }
+
+    function listenerForEventFunction() {
+        var names = [];
+        function listen(type, name) {
+            if (type == 'function params') {
+                var baseName = name,
+                     index = baseName.indexOf('.');
+                if (index>-1) baseName = baseName.substr(0, index);
+                if (!ignoredNames[baseName] && !arrayContains(names, baseName)) names.push(baseName);
+            }
+            return name;
+        }
+
+        function wrapEventFunction(func) {
+            if (names.length>0) {
+                var joined = names.join(', ');
+                return "(function ("+joined+"){return "+func+"})("+joined+")";
+            }
+            return func;
+        }
+
+        listen.wrapEventFunction=wrapEventFunction;
+
+        return listen;
+    }
+
     function attributesToJS(html, /*Map*/ attributes, dependencies) {
         var k = attributes.keys(), l = k.length, id = null, value;
         while (l-->0) {
@@ -352,8 +387,9 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
                     attributes.remove(name);
                 } else if (Strings.startsWith(nameLowerCase, "on")) {
                     if (!id) id = new Map();
-                    var eventFunction = "function (event, element) {"+toJS(value.$c, ctxJs,  dependencies).value+"}";
-                    id.put(nameLowerCase, eventFunction);
+                    var listener = listenerForEventFunction(),
+                        eventFunction = "function (event, element) {"+toJS(value.$c, ctxJs,  dependencies, listener).value+"}";
+                    id.put(nameLowerCase, listener.wrapEventFunction(eventFunction));
                     attributes.remove(name);
                 }
             }
@@ -424,33 +460,33 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
     HtmlParser.doRequireModule = doRequireModule;
 
     function removeWhiteSpacesFromHtml(s) {
-        var l= s.length, r="", lastIsWhiteSpace=false, inPre = false;
+        var l= s.length, result="", lastIsWhiteSpace=false, inPre = false;
         for (var i = 0;i<l;i++) {
             var c = s.charAt(i);
             if (inPre) {
                 if (c == '<' && i + 5 < l && s.substr(i + 1, 4).toLowerCase() == '/pre') {
                     c = s.charAt(i + 5);
                     inPre = !(c < '!' || c == '>');
-                    r += '</pre';
+                    result += '</pre';
                     i += 5;
-                    lastIsWhiteSpace = r<'!';
+                    lastIsWhiteSpace = result<'!';
                 }
-                r+=c;
+                result+=c;
             } else if (c<'!') {
-                if (!lastIsWhiteSpace) r+=' ';
+                if (!lastIsWhiteSpace) result+=' ';
                 lastIsWhiteSpace = true;
             } else {
                 if (c == '<' && i + 4 < l && s.substr(i + 1, 3).toLowerCase() == 'pre') {
                     c = s.charAt(i + 4);
                     inPre = c < '!' || c == '>';
-                    r += '<pre';
+                    result += '<pre';
                     i += 4;
                 }
-                r+=c;
+                result+=c;
                 lastIsWhiteSpace = false;
             }
         }
-        return r;
+        return result;
     }
 
 
