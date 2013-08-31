@@ -127,7 +127,6 @@ define(['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (M
                     var /*ParsedText*/ value = null;
                     if (c == "=") {
                         //noinspection JSValidateTypes
-                        value = new ParsedText();
                         notOK = input.getPosition();
                         //parse attribute value
                         var type = '';
@@ -139,41 +138,47 @@ define(['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (M
                             last = type = c;
                             c = input.read();
                         }
-                        value.addChar(c);
-                        last = c;
-                        while (c=input.read()) {
-                            if (isSpecialSymbol(last, c)) {
-                                parser.parsingSpecial(last);
-                                value.removeLastChar();
-                                value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                                last = '';
-                                c = input.read();
-                            }
-                            if (type=='') {
-                                if (c==">") {
-                                    notOK = false;
-                                    input.setRelative(-1);
-                                    break;
-                                }
-                                if (c<'!') {
-                                    notOK = false;
-                                    break;
-                                }
-                            } else {
-                                if (c==type) {
-                                    notOK = false;
-                                    break;
-                                }
-                            }
-
-                            if (!type && c=='>') {
-                            }
+                        value = new ParsedText();
+                        if (c != type && c!='>') {
                             value.addChar(c);
                             last = c;
-                        }
-                        if (notOK) {
-                            if (cs) cs.addError("Can't find end of attribute value in '"+input.errorAt(notOK)+"'");
-                            return null;
+                            while (c = input.read()) {
+                                if (isSpecialSymbol(last, c)) {
+                                    parser.parsingSpecial(last);
+                                    value.removeLastChar();
+                                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                                    last = '';
+                                    c = input.read();
+                                }
+                                if (type == '') {
+                                    if (c == ">") {
+                                        notOK = false;
+                                        input.setRelative(-1);
+                                        break;
+                                    }
+                                    if (c < '!') {
+                                        notOK = false;
+                                        break;
+                                    }
+                                } else {
+                                    if (c == type) {
+                                        notOK = false;
+                                        break;
+                                    } else if (c=='>') {
+                                        if (cs) cs.addWarning("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                        notOK = false;
+                                        break;
+                                    }
+                                }
+                                value.addChar(c);
+                                last = c;
+                            }
+                            if (notOK) {
+                                if (cs) cs.addError("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                return null;
+                            }
+                        } else {
+                            value.addChar("");
                         }
                     }
 

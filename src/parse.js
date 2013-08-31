@@ -52,8 +52,7 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
             return eval(js);
         } catch (e) {
             if (window.console) {
-                console.log("Error executing "+name, e);
-                console.log("Error executing "+name, js);
+                console.log("Error executing "+name, e, js);
             }
             throw e;
         }
