@@ -107,7 +107,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
                     throw "Sorry, special tag '@{valuesObject:fileName.propertyName}' must have constant fileName (not variable). The valuesObject is not mandatory, but also must have constant name."+iO;
                 }
                 var values = valuesIndex ? v.substr(0, valuesIndex-1) : null,
-                    moduleName = v.substr(valuesIndex, iO),
+                    moduleName = v.substr(valuesIndex, iO - valuesIndex),
                     key = iO+2<v.length ? v.substr(iO + 1) : "",
                     result = new ParsedJS(ctxJsValue, dependencies.get(moduleName) + "(", ctxJsEmpty, null);
                 if (key>"") {
