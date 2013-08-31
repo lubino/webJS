@@ -392,7 +392,7 @@ define(['web/Listeners'], function (Listeners) {
         return [];
     }
 
-    const MAXIMUM_SYNC_ITERATIONS = 1000;
+    var MAXIMUM_SYNC_ITERATIONS = 1000;
 
     /**
      * Sets values from UI HTML element to parameters object and vice versa (specified by event)
@@ -470,7 +470,7 @@ define(['web/Listeners'], function (Listeners) {
         return null;
     }
 
-    const SYNC_FROM_HTML_EVENT = {type: "synchronizeFromHTML", isFromHTML: true},
+    var SYNC_FROM_HTML_EVENT = {type: "synchronizeFromHTML", isFromHTML: true},
         SYNC_TO_HTML_EVENT = {type: "synchronizeToHTML", isToHTML: true};
 
 

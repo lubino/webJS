@@ -16,11 +16,13 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
         var loaded = false;
         var ajax = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
         ajax.onreadystatechange = function () {
-            if (ajax.readyState == 4 && (ajax.status == 200 || ajax.status == 0)) {
-                if (callBack) callBack(new InputStream(ajax.responseText));
-                else {
+            if (!loaded && ajax.readyState == 4 && (ajax.status == 200 || ajax.status == 0)) {
+                if (callBack) {
+                    loaded = !!ajax.responseText;
+                    callBack(new InputStream(ajax.responseText));
+                } else {
                     content = ajax.responseText;
-                    loaded = true;
+                    loaded = !!ajax.responseText;
                 }
             }
         };

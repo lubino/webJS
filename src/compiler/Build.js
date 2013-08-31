@@ -66,18 +66,19 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                 var fileName = files[i].name;
                 var name;
                 var type = parseType(fileName);
+
+                //remove extension
+                fileName = fileName.substr(0, fileName.lastIndexOf('.'));
+
                 if (type == 2) {
                     var localeIndex = fileName.indexOf('_');
                     if (localeIndex > 0) {
                         name = fileName.substr(0, localeIndex);
-                        fileName = name + ".js";
                     } else {
-                        name = fileName.substr(0, fileName.lastIndexOf('.'));
-                        fileName = name + ".js";
+                        name = fileName;
                     }
 
-                    var out = PropertiesParser.parseProperties(name, input, dependencies, cs, runParameters);
-
+                    var out = PropertiesParser.parseProperties(fileName, input, dependencies, cs, runParameters);
                     outs = propertiesMap.get(name);
                     if (!outs) {
                         outs = [out];
@@ -88,7 +89,7 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                     outs.dependencies = dependencies;
                     //containsKey
                 } else if (type == 1) {
-                    name = fileName.substr(0, fileName.lastIndexOf('.'));
+                    name = fileName;
                     fileName = name + ".js";
                     log(i + ": " + files[i].name + " (" + destination + fileName + ")");
                     //noinspection JSValidateTypes
@@ -111,7 +112,7 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                     else result += lineSeparator + outs[k];
                 }
                 log(i + ": " + names[i] + " (" + destination + names[i] + ")");
-                result = PropertiesParser.finishProperties(name, result, dependencies);
+                result = PropertiesParser.finishProperties(names[i], result, dependencies);
 
                 file.saveFile(destination + names[i] + ".js", PropertiesParser.doRequireModule(result, dependencies), runParameters.outputCharset);
             }
