@@ -3,7 +3,6 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <title>Example title</title>
     <script>
-        var jera = require('jera');
         function t(s, a) {
             console.log('calling t', s, a);
             return 'name';
@@ -21,7 +20,7 @@
         }
 
         function send(a) {
-            console.log("sending",a);
+            if (console.log) console.log("sending",a);
         }
     </script>
 </head>
@@ -31,7 +30,7 @@
 <h1>Hi @{example/helloWorldTexts.name}</h1>
 This is ony example
 <input id="parameters.a" />
-<input id="parameters.a" />
-<button onclick="jera.send(parameters)"></button>
+<input id="parameters.b" type="password" />
+<button onclick="send(parameters)"></button>
 </body>
 </html>

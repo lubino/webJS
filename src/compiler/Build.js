@@ -19,6 +19,7 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
                 "                         (Default: \"UTF-8\")\n" +
                 "  -control POLICIES    to set the coding rules policy\n" +
                 "                       (e.g. \"-control parametricPage,parametricCall,dynamicPages,doc\")\n" +
+                "  -exclude REG_EXP     to set the files to be excluded (REG_EXP is regular expression)\n" +
                 "  -v VERBOSE_DIR       to set the verbose output directory\n" +
                 "  -cp JAVA_CLASS_PATH  to set the CLASS_PATH for compiled java sources\n" +
                 "  -javadoc PATH        to set the JavaDoc PATH of compiled java sources\n" +

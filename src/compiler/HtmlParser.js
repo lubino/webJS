@@ -346,7 +346,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
                 var baseName = name,
                      index = baseName.indexOf('.');
                 if (index>-1) baseName = baseName.substr(0, index);
-                if (!ignoredNames[baseName] && !arrayContains(names, baseName)) names.push(baseName);
+                if (!ignoredNames[baseName] && !arrayContains(names, baseName) && baseName!="null" && (""+(1*baseName))!=baseName) names.push(baseName);
             }
             return name;
         }
