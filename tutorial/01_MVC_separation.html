@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8"/>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
+    <title>webJS MVC representation</title>
+    <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript"
+            charset="utf-8"></script>
+    <script src="tutorial.js"></script>
+</head>
+<body onload="init()">
+<header>
+    <span id="title">webJS toolkit</span>
+    <nav>
+        <ul>
+            <li><a href="../">Home</a></li>
+            <li><a href="./">Tutorial</a></li>
+        </ul>
+    </nav>
+</header>
+<section id="main">
+
+    <div id="container">
+
+        <h2>
+            webJS MVC representation
+        </h2>
+
+        <div class="description">
+            Model–view–controller (MVC) in short term means, that <b>information data</b>(Model)
+            and <b>graphic</b>(View) and <b>application logic</b>(Controller) are separated and can be reused.
+            This paradigm in HTML pages can be realised in a simple way:
+            <ul>
+                <li><b>Model</b> can by a bunch of JSON data objects with some functions module making connections
+                    and meaning between them
+                </li>
+                <li><b>View</b> can by some HTML+CSS templates with another functions module making presentation logic
+                </li>
+                <li><b>Controller</b> must be some application logic module making functional wires between Model and
+                    View
+                </li>
+            </ul>
+            For more information about MVC paradigm see
+            <a href="http://en.wikipedia.org/wiki/Model–view–controller">something on the web</a>.
+        </div>
+
+
+        <h2>Example based explanation</h2>
+        In this example we want to edit a detail information about a person. The person has name, surname and some description.<br/>
+        The simplest way to hold this information is to create a JavaScript object like this:
+<pre id="ace1" type="javascript">
+
+    var person = {name: "John", surname: "Carter", description: "he lives on Mars"};
+
+</pre>
+        The person JavaScript object is a part o Model. It is something what contains important information,
+        which our apps work with.<br>
+
+        Let's have a look on a View, which shows detail information about a person. For this View we are going
+        to use webJS component page. This component offers the "parameters" binding to wire some HTML element
+        with attributes in data object.
+        See for your self the file "detail.html":
+<pre id="ace2" type="html">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Person detail&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Person&lt;/h1&gt;
+    &lt;p&gt;
+        Name: &lt;input id="parameters.person.name" /&gt;
+    &lt;/p&gt;
+    &lt;p&gt;
+        Surname: &lt;input id="parameters.person.surname" /&gt;
+    &lt;/p&gt;
+    &lt;p&gt;
+        Description: &lt;textarea id="parameters.person.description" &gt;&lt;/textarea&gt;
+    &lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+If we want to create a webJS component from this HTML file, we need to create a JavaScript file with the same name,
+which uses <b>webJS parse</b> module compatible with requireJS. Let's see content of file "detail.js":
+<pre id="ace3" type="javascript">
+
+define(['parse','web/Components'], function (parse, Components) {
+    return parse('detail.html');
+});
+
+</pre>
+        It is really a simple View, without any custom presentation logic, but it is just enough for right now. <br>
+        Last thing to make MVC complete is the Controller. It is something what takes our Model and connects it to
+        our View. As you will see, it is intuitive too:
+<pre id="ace4" type="javascript">
+function show_Person_Detail_In_HTML_element(person, element) {
+    //ensure that HTML element exists
+    if (element) {
+        //element exists, so use requireJS to load the webJS detail component and use it:
+        require(['detail'], function (detail) {
+            //now we create a parameters object for the webJS detail component
+            var parameters = {};
+
+            //it needs object named person, so let's add it to parameters usign
+            //our "person" argument from show_Person_Detail_In_HTML_element function
+            parameters.person = person;
+
+            //all is set up, now we can paint our detail just by calling
+            //component function with arguments target and parameters
+            detail(element, parameters);
+        });
+    }
+}
+
+     var person = {name: "John", surname: "Carter", description: "he lives on Mars"};
+
+     show_Person_Detail_In_HTML_element(person, document.body);
+
+</pre>
+
+        <div class="important">
+            <h3>Important notice</h3>
+            <ul>
+                <li>
+                    If we want to create a webJS component from our HTML page, we need to create a JavaScript file
+                    with the same name in the same path to be compatible with requireJS needs
+                </li>
+                <li>
+                    Page, where we want to use webJS components, must supports requireJS
+                </li>
+            </ul>
+        </div>
+
+        <h2>webJS API used in this example</h2>
+        <p>
+            The webJS parse function is a requireJS module that has this API:
+        </p>
+
+<pre id="ace5" type="javascript">
+    /**
+     * Parses HTML or PROPERTIES file and returns webJS component module for it
+     * @param url HTML or PROPERTIES file
+     * @param locales in case of PROPERTIES file parameter locales defines all locales to parse
+     * @returns webJS component factory function
+     */
+    function parse(url, locales) {
+        /* webJS implementation */
+        return componentFactory || propertiesFactory;
+    }
+</pre>        <p>
+            Component factory function is a requireJS module returned by webJS HTML parser. It has this API:
+        </p>
+
+<pre id="ace6" type="javascript">
+    /**
+     * Creates instance of webJS component
+     * @param target id of target element or HTML element (null means document.body)
+     * @param customParameters parameters object (null is supported)
+     * @param parentInstance parent component (null is supported)
+     * @param callBack function called after the instance is created (null is supported)
+     */
+    function componentFactory(target, customParameters, parentInstance, callBack) {
+        /* webJS implementation */
+        var instance = new Instance(); //reference to created instance
+        callBack(instance);
+    }
+</pre>
+
+    </div>
+
+
+</section>
+<footer>
+    ©2013 Mgr. Ľuboš Strapko | Email/jabber: lubino@<span style="visibility: collapse; display: none;">(DELETE THIS PART)</span>gmail.com
+    | iMessage +420608127600 | old crappy Nokia +421949550275 | www.lubino.sk
+</footer>
+<script type="text/javascript">
+    var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+    document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+    try {
+        var pageTracker = _gat._getTracker("UA-11677697-7");
+        pageTracker._trackPageview();
+    } catch (err) {
+    }</script>
+</body>
+</html>
+

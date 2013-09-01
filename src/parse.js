@@ -72,6 +72,12 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
     }
 
 
+    /**
+     * Parses HTML or PROPERTIES file and returns webJS component module for it
+     * @param url HTML or PROPERTIES file
+     * @param locales in case of PROPERTIES file parameter locales defines all locales to parse
+     * @returns webJS component factory function
+     */
     function parse(url, locales) {
 
         //noinspection JSValidateTypes

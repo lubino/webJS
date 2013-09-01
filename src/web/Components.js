@@ -643,9 +643,9 @@ define(['web/Listeners'], function (Listeners) {
     /**
      * Opens dynamic page
      * @param urlOrFactory name of page with path and parameters (e.g. "path/pageName?parameter1=value1&parameter2=value2")
-     * @param target id of target element
+     * @param target id of target element or HTML element (null means document.body)
      * @param customParameters parameters object (null is supported)
-     * @param parentInstance parent component
+     * @param parentInstance parent component (null is supported)
      * @param callBack parameters object (null is supported)
      */
     function open(urlOrFactory, target, customParameters, parentInstance, callBack) {
