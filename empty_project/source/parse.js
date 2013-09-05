@@ -4224,17 +4224,16 @@ define('parse',['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesPar
         var loaded = false;
         var ajax = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP");
         ajax.onreadystatechange = function () {
-            if (!loaded && ajax.readyState == 4 && (ajax.status == 200 || ajax.status == 0)) {
+            if (!loaded && (ajax.readyState == 4 && ajax.status == 200) || (ajax.responseText && ajax.status == 0)) {
+                loaded = !!ajax.responseText;
                 if (callBack) {
-                    loaded = !!ajax.responseText;
                     callBack(new InputStream(ajax.responseText));
                 } else {
                     content = ajax.responseText;
-                    loaded = !!ajax.responseText;
                 }
             }
         };
-        ajax.open("GET", url, callBack!=null);
+        ajax.open("GET", url, !!callBack);
         ajax.send();
 
         if (!callBack && !loaded) throw "Can't load file '"+url+"'";
@@ -4280,6 +4279,12 @@ define('parse',['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesPar
     }
 
 
+    /**
+     * Parses HTML or PROPERTIES file and returns webJS component module for it
+     * @param url HTML or PROPERTIES file
+     * @param locales in case of PROPERTIES file parameter locales defines all locales to parse
+     * @returns webJS component factory function
+     */
     function parse(url, locales) {
 
         //noinspection JSValidateTypes
