@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8"/>
+    <link href="../css/styles.css" rel="stylesheet" type="text/css"/>
+    <title>webJS MVC representation</title>
+    <script src="http://d1n0x3qji82z53.cloudfront.net/src-min-noconflict/ace.js" type="text/javascript"
+            charset="utf-8"></script>
+    <script src="tutorial.js"></script>
+</head>
+<body onload="init()">
+<header>
+    <span id="title">webJS toolkit</span>
+    <nav>
+        <ul>
+            <li><a href="../">Home</a></li>
+            <li><a href="./">Tutorial</a></li>
+        </ul>
+    </nav>
+</header>
+<section id="main">
+
+    <div id="container">
+
+        <h2>
+            webJS resources and i18n
+        </h2>
+
+        <div class="description">
+            Most common way to store i18n resources is in ".properties" files.
+            Content of this file holds data in a <i>key</i>=<i>value</i> format.
+            For more information about ".properties" files visit
+            <a href="http://en.wikipedia.org/wiki/.properties" target="_blank">wikipedia</a> or
+            <a href="http://docs.oracle.com/javase/tutorial/i18n/resbundle/propfile.html" target="_blank">oracle</a>.
+        </div>
+
+        <h2>Example based explanation</h2>
+        In this example we want to show some text on page, where page supports english and slovak language.
+        This text is different for each language we use.
+        First of all we need to create a <b>.properties</b> file for each language we want our web app to use.
+        <br> resFile1_en_US.properties:
+<pre id="ace1" type="properties">
+test=Hi there!
+person=Person
+person.name=Name:
+person.surname=Surname:
+person.description=Description:
+</pre>
+        <br> resFile1_sk_SK.properties:
+<pre id="ace2" type="properties">
+test=Ahoj!
+person=Osoba
+person.name=Meno:
+person.surname=Priezvysko:
+person.description=Popis:
+</pre>
+        Now we need to create a requireJS module, which represents this resources. In this file we let parser to parse
+        the two properties (for en_US locale and sk_SK locale) files.
+        <br> resFile1.js:
+<pre id="ace3" type="javascript">
+define(['parse','web/Resources'], function (parse) {
+    return parse('resFile1.properties', ['en_US','sk_SK']);
+});
+</pre>
+        To be able to use this resource in HTML file, we need to add requireJS dependency (resFile1) to our HTML component.
+        <br> detail.js:
+<pre id="ace4" type="javascript">
+
+define(['parse','web/Components','resFile1'], function (parse, Components) {
+    return parse('detail.html');
+});
+
+</pre>
+        And finally we are able to use <b>@</b><b>{file.key}</b> magic in our HTML page.
+        <br>detail.html:
+<pre id="ace5" type="html">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Person detail&lt;/title&gt;
+    &lt;script&gt;
+        //example of resource used in JavaScript
+        alert("@{resFile1.test}");
+    &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;@{resFile1.person}&lt;/h1&gt;
+    &lt;p&gt;
+        @{resFile1.name} &lt;input id="parameters.person.name" /&gt;
+    &lt;/p&gt;
+    &lt;p&gt;
+        @{resFile1.surname} &lt;input id="parameters.person.surname" /&gt;
+    &lt;/p&gt;
+    &lt;p&gt;
+        @{resFile1.description} &lt;textarea id="parameters.person.description" &gt;&lt;/textarea&gt;
+    &lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+        Are you asking yourself how you can set or change the language? It is really simple, just call <i>setLocale</i>
+        function on <b>Resources</b> module.
+<pre id="ace6" type="javascript">
+    require(['web/Resources'], function (Resources) {
+        Resources.setLocale("sk_SK");
+    });
+</pre>
+        <div class="important">
+            <h3>Important notice</h3>
+            <ul>
+                <li>
+                    If we want to create a webJS component from our HTML page, we need to create a JavaScript file
+                    with the same name in the same path to be compatible with requireJS needs
+                </li>
+                <li>
+                    Page, where we want to use webJS components, must supports requireJS
+                </li>
+            </ul>
+        </div>
+
+        <h2>webJS API used in this example</h2>
+        <p>
+            The webJS parse function is a requireJS module that has this API:
+        </p>
+
+<pre id="ace7" type="javascript">
+    /**
+     * Parses HTML or PROPERTIES file and returns webJS component module for it
+     * @param url HTML or PROPERTIES file
+     * @param locales in case of PROPERTIES file parameter locales defines all locales to parse
+     * @returns webJS component factory function
+     */
+    function parse(url, locales) {
+        /* webJS implementation */
+        return componentFactory || propertiesFactory;
+    }
+</pre>
+        <p>
+            Component factory function is a requireJS module returned by webJS HTML parser. It has this API:
+        </p>
+
+<pre id="ace8" type="javascript">
+    /**
+     * Creates instance of webJS component
+     * @param target id of target element or HTML element (null means document.body)
+     * @param customParameters parameters object (null is supported)
+     * @param parentInstance parent component (null is supported)
+     * @param callBack function called after the instance is created (null is supported)
+     */
+    function componentFactory(target, customParameters, parentInstance, callBack) {
+        /* webJS implementation */
+        var instance = new Instance(); //reference to created instance
+        callBack(instance);
+    }
+</pre>
+
+        <h2>
+            behind the scene
+        </h2>
+        The real JavaScript behind properties resource module is a function with one ore two arguments.
+<pre id="ace7" type="javascript">
+    /**
+     * Creates instance of webJS component
+     * @param target id of target element or HTML element (null means document.body)
+     * @param customParameters parameters object (null is supported)
+     * @param parentInstance parent component (null is supported)
+     * @param callBack function called after the instance is created (null is supported)
+     */
+    function componentFactory(target, customParameters, parentInstance, callBack) {
+        /* webJS implementation */
+        var instance = new Instance(); //reference to created instance
+        callBack(instance);
+    }
+</pre>
+    </div>
+
+
+</section>
+<footer>
+    ©2013 Mgr. Ľuboš Strapko | Email/jabber: lubino@<span style="visibility: collapse; display: none;">(DELETE THIS PART)</span>gmail.com
+    | iMessage +420608127600 | old crappy Nokia +421949550275 | www.lubino.sk
+</footer>
+<script type="text/javascript">
+    var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+    document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+    try {
+        var pageTracker = _gat._getTracker("UA-11677697-7");
+        pageTracker._trackPageview();
+    } catch (err) {
+    }</script>
+</body>
+</html>
+
