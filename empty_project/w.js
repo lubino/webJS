@@ -4102,9 +4102,9 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
                     else result += lineSeparator + outs[k];
                 }
                 log(i + ": " + names[i] + " (" + destination + names[i] + ")");
-                result = PropertiesParser.finishProperties(names[i], result, dependencies);
+                result = PropertiesParser.finishProperties(names[i], result, outs.dependencies);
 
-                file.saveFile(destination + names[i] + ".js", PropertiesParser.doRequireModule(result, dependencies), runParameters.outputCharset);
+                file.saveFile(destination + names[i] + ".js", PropertiesParser.doRequireModule(result, outs.dependencies), runParameters.outputCharset);
             }
         }
 
