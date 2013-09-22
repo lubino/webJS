@@ -699,6 +699,7 @@ define(['web/Listeners'], function (Listeners) {
         var targetIsComponent;//true if "target" is some instance object for some page
         var element = target ? typeof(target) != "string" ? !(targetIsComponent = typeof(target.factory)== "function") ? target.tagName ? target : null : target.getElement() : document.getElementById(target) : document.body;
         if (!element) throw "Sorry, I can not open '"+urlOrFactory.componentName+"' in target '"+target+"'.";
+        if (targetIsComponent && !parentInstance) parentInstance = target.getParent();
 
         //2. call listeners for opening new pages
         var listenerArguments = {
