@@ -48,7 +48,7 @@ define(['compiler/Strings'], function (Strings) {
         dependencies.init(null);
         dependencies.put(localizationName, localization);
 
-        var isNotFirst = false;
+        var isNotFirst = false, ignoreSpace = false;
         var c = ' ';
         while (c != '') {
             c = input.read();
@@ -63,6 +63,7 @@ define(['compiler/Strings'], function (Strings) {
                 var /*int*/ lastCharacter = line.length - 1;
                 if (doIt && line.charAt(lastCharacter) == '\\') {
                     line = line.substring(0, lastCharacter);
+                    ignoreSpace = true;
                     doIt = c == '';
                 }
                 if (doIt) {
@@ -77,19 +78,40 @@ define(['compiler/Strings'], function (Strings) {
                         else isNotFirst = true;
                         if (parameters.keys > "") parameters.keys += "\n      ";
                         parameters.keys += useQuotes ? Strings.toJSString(key) : key;
-                        parameters.keys += ': ' + Strings.toJSString(value);
+                        parameters.keys += ': ' + valueToJSString(value);
                     }
                     line = "";
                 }
                 if (c == '') break;
-            } else if (c >= ' ') {
+            } else if (c >= ' ' && (!ignoreSpace || c != ' ')) {
                 line += c;
+                ignoreSpace = false;
             }
         }
 
         return Strings.replaceWith(localizationFrame, parameters);
     }
 
+    function valueToJSString(value) {
+        var l = value.length, r = "'", last='';
+        for (var i = 0; i < l; i++) {
+            var c = value.charAt(i);
+            if (c == '\\') {
+                if (last == '\\') {
+                    r += '\\\\';
+                    last = '';
+                } else last = c;
+            } else if (c == "'") {
+                r += "\\'";
+                last = c;
+            } else {
+                if (last == '\\') r += '\\';
+                r += c;
+                last = c;
+            }
+        }
+        return r + "'";
+    }
 
     /**
      * Creates function around Resources properties from function parseResource

@@ -121,7 +121,7 @@ define(['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/B
                 }
             } else {
                 if (cs != null) {
-                    cs.addWarning("Error processing function '" + name + parameters);
+                    cs.addWarning("Error processing function '" + name + parameters+"' (start="+start+", end="+end+")");
                 }
                 end = brackets.end + 1;
             }
