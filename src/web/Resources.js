@@ -125,7 +125,7 @@ define(['web/accessor'], function (accessor) {
      * @param locale actual locale e.g. "en_US"
      */
     function setLocale(locale) {
-        if (locale == null || /^\w+$/.test(locale)) throw "Unsupported locale '"+locale+"'";
+        if (locale == null || !/^\w+$/.test(locale)) throw "Unsupported locale '"+locale+"'";
         actualLocale = locale;
     }
 
