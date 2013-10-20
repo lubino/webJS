@@ -4,6 +4,7 @@ set -e						  # exit on error
 
 cd `dirname "$0"`
 
+rm -rf output
 mkdir output
 cp -R source/* output
 
