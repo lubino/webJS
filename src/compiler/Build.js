@@ -104,7 +104,7 @@ define(['compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/Map', 'com
             }
 
             var names = propertiesMap.keys();
-            var lineSeparator = file.getLineSeparator();
+            var lineSeparator = "\n";
             for (i = 0; i < names.length; i++) {
                 outs = propertiesMap.get(names[i]);
                 var result = "";
