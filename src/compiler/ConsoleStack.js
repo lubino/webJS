@@ -118,8 +118,16 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
             if (!jsBody || jsBody.indexOf(functionParameters[1]+'()')==-1)
                 this.addError("Function 'beforeCreate' must invoke 2nd function parameter '"+functionParameters[1]+"()' to run callback function!");
         } else if (name == "afterCreate") {
-            if (functionParameters.length > 1 || functionParameters[0]=='parameters')
+            if (functionParameters.length != 1 || functionParameters[0]=='parameters')
                 this.addError("Function 'afterCreate' must have one function parameter (instance) instead of ("+functionParameters.join(", ")+")!");
+        } else if (name == "onDestroy") {
+            if (functionParameters.length != 1 || functionParameters[0]=='parameters')
+                this.addError("Function 'onDestroy' must have one function parameter (instance) instead of ("+functionParameters.join(", ")+")!");
+        } else if (name == "onChildDestroy") {
+            if (functionParameters[0]=='child')
+                this.addError("Function 'onChildDestroy' must have two function parameters (instance, child) instead of ("+functionParameters.join(", ")+")!");
+            if (functionParameters[1]=='instance')
+                this.addError("Function 'onChildDestroy' must have two function parameter (instance, child) instead of ("+functionParameters.join(", ")+")!");
         } else if (name == "extendInstance") {
             if (functionParameters[0]=='instance')
                 this.addError("Function 'extendInstance' with first function parameter instance is not allowed!");

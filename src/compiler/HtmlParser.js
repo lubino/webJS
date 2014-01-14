@@ -208,7 +208,7 @@ define(['compiler/Strings', 'compiler/Tag', 'compiler/ParsedText', 'compiler/Map
             if (functions.containsKey("beforeCreate")) parameters.hasBeforeCreate = "";
             if (functions.containsKey("afterCreate")) parameters.hasAfterCreate = "";
             if (functions.containsKey("onDestroy")) parameters.hasOnDestroy = "";
-            if (functions.containsKey("hasOnChildDestroy")) parameters.hasOnChildDestroy = "";
+            if (functions.containsKey("onChildDestroy")) parameters.hasOnChildDestroy = "";
             html.add(END_PARSED_JS);
             title.add(END_PARSED_JS);
             parameters.html = html.value;

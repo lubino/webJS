@@ -175,16 +175,26 @@ define(['web/Listeners'], function (Listeners) {
     }
 
     /**
-     * Destroy component and all its chindren
+     * Destroy component and all its children
      * @param instance component (instance) object
      */
     function destroyComponent(/*Instance*/instance) {
-        var children = instance.getChildren();
-        var j = children.length;
-        for (var i = 0; i < j; i++) {
+        var children = instance.getChildren(),
+            parent = instance.getParent(),
+            i = children.length;
+        while (i --> 0) {
             destroyComponent(children[i]);
         }
         if (instance.factory.onDestroy) instance.factory.onDestroy(instance);
+        if (parent) {
+            if (parent.factory.onChildDestroy) parent.factory.onChildDestroy(instance, parent);
+            var parentChildren = parent.getChildren();
+            i = parentChildren.length;
+            while (i-- > 0) if (instance == parentChildren[i]) {
+                parentChildren.splice(i,1);
+                break;
+            }
+        }
     }
 
     /**
