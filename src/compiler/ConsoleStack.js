@@ -124,10 +124,10 @@ define(['compiler/Map', 'compiler/Strings', 'compiler/MetaFunction', 'compiler/S
             if (functionParameters.length != 1 || functionParameters[0]=='parameters')
                 this.addError("Function 'onDestroy' must have one function parameter (instance) instead of ("+functionParameters.join(", ")+")!");
         } else if (name == "onChildDestroy") {
-            if (functionParameters[0]=='child')
-                this.addError("Function 'onChildDestroy' must have two function parameters (instance, child) instead of ("+functionParameters.join(", ")+")!");
-            if (functionParameters[1]=='instance')
-                this.addError("Function 'onChildDestroy' must have two function parameter (instance, child) instead of ("+functionParameters.join(", ")+")!");
+            if (functionParameters[0]=='instance')
+                this.addError("Function 'onChildDestroy' must have two function parameters (child, instance) instead of ("+functionParameters.join(", ")+")!");
+            if (functionParameters[1]=='child')
+                this.addError("Function 'onChildDestroy' must have two function parameter (child, instance) instead of ("+functionParameters.join(", ")+")!");
         } else if (name == "extendInstance") {
             if (functionParameters[0]=='instance')
                 this.addError("Function 'extendInstance' with first function parameter instance is not allowed!");
