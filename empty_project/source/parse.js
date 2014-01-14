@@ -2953,6 +2953,8 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             "       ${components}.open(${constructorName}, target, customParameters, parentInstance, callBack);\n" +
             "    }\n" +
             "\n" +
+            "    var factory = ${constructorName};\n" +
+            "\n" +
             "    /**\n" +
             "     * Creates instance of '${name}' component and renders HTML content for it.\n" +
             "     * @param parameters global reference for all data\n" +
@@ -2961,7 +2963,7 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             "     * @return new instance of '${name}' component\n" +
             "     */\n" +
             "    function create(parameters, body, parentInstance) {\n" +
-            "       var instance = ${createInstance}(${constructorName}, parameters, body, parentInstance), html='';\n" +
+            "       var instance = ${createInstance}(factory, parameters, body, parentInstance), html='';\n" +
             "       ${html}\n" +
             "       body.innerHTML = html;" +
             "       ${css}" +
@@ -2972,11 +2974,12 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             "    //--------- end of body tag --------- \n" +
             "\n" +
             "    //--------- factory configuration --------- \n" +
-            "    ${hasBeforeCreate}${constructorName}.beforeCreate = beforeCreate;\n" +
-            "    ${constructorName}.create = create;\n" +
-            "    ${hasAfterCreate}${constructorName}.afterCreate = afterCreate;\n" +
-            "    ${hasOnDestroy}${constructorName}.onDestroy = onDestroy;\n" +
-            "    ${constructorName}.componentName = ${jsName};\n" +
+            "    ${hasBeforeCreate}factory.beforeCreate = beforeCreate;\n" +
+            "    factory.create = create;\n" +
+            "    ${hasAfterCreate}factory.afterCreate = afterCreate;\n" +
+            "    ${hasOnDestroy}factory.onDestroy = onDestroy;\n" +
+            "    ${hasOnChildDestroy}factory.onChildDestroy = onChildDestroy;\n" +
+            "    factory.componentName = ${jsName};\n" +
             "  return ${constructorName};\n" +
             "  }";
 
@@ -2992,6 +2995,7 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             hasBeforeCreate: "//",
             hasAfterCreate: "//",
             hasOnDestroy: "//",
+            hasOnChildDestroy: "//",
             components: "Components"
         };
 
@@ -3004,6 +3008,7 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
         ignoredNames = { instance: 1, parameters:1, body: 1, parentInstance:1, event: 1, element:1,
             beforeCreate:1, create:1, afterCreate:1, onDestroy:1};
         ignoredNames[parameters.components]=1;
+        ignoredNames["null"]=1;
 
         dependencies.init(jsNameGetter);
         dependencies.put(name, parameters.constructorName);
@@ -3130,6 +3135,7 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             if (functions.containsKey("beforeCreate")) parameters.hasBeforeCreate = "";
             if (functions.containsKey("afterCreate")) parameters.hasAfterCreate = "";
             if (functions.containsKey("onDestroy")) parameters.hasOnDestroy = "";
+            if (functions.containsKey("hasOnChildDestroy")) parameters.hasOnChildDestroy = "";
             html.add(END_PARSED_JS);
             title.add(END_PARSED_JS);
             parameters.html = html.value;
@@ -3215,49 +3221,25 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
     }};
 
     idPrefixes.put("component.", function (value, key, keyValue, id, dependencies) {
-        var moduleName = "";
-        var functionParameters = "";
-        var wrapperMap = new Map();
-        var parsed = toJS(value.$c, ctxJsValue, dependencies, function (type, value, context) {
-            //console.log("parserListener "+type + context, value);
-            if (type == "parsing" && typeof value == "object") {
-                var jsName = Strings.toJSName(value.value);
-                wrapperMap.put(jsName, value.value);
-                value.value = jsName;
-            } else if (type == "function") {
-                if (typeof value=="string" && Strings.startsWith(value, "component.")) moduleName = value.substr(10);
-            } else if (type == "function params") {
-                if (typeof value=="string" && !functionParameters) functionParameters = Strings.trim(value);
-            }
-            return value;
-        });
-        var s = parsed.value;
-        if (!moduleName && !Strings.startsWith(s, "component.")) {
+        var s = toJS(value.$c, ctxJsValue, dependencies).value;
+        if (!Strings.startsWith(s, "component.")) {
             throw "Error parsing component name '"+keyValue+"'";
         }
-        if (!moduleName) {
-            moduleName = s.substr(10);
-        }
-
-        id.put("component", wrapWithMap(wrapperMap, "{name: "+Strings.toJSString(moduleName)+", factory: "+dependencies.get(moduleName)+(functionParameters ? ", parameters: "+functionParameters : "")+"}"));
+        var i=s.indexOf('('), j = s.lastIndexOf(')'), moduleName = i>0 ? s.substr(10, i-10) : s.substr(10);
+        var functionParameters = i>0 && j>i ? s.substr(i+1, j-i-1) : "";
+        var names=[];
+        addNamesForWrap(names, functionParameters);
+        id.put("component", wrapEventFunction(names, "{name: "+Strings.toJSString(moduleName)+", factory: "+dependencies.get(moduleName)+(functionParameters ? ", parameters: "+functionParameters : "")+"}"));
     });
 
     idPrefixes.put("parameters.", function (value, key, keyValue, id, dependencies) {
-        var wrapperMap = new Map();
-        var parsed = toJS(value.$c, ctxJsValue, dependencies, function (type, value) {
-            //console.log("parserListener "+type + context, value);
-            if (type == "parsing" && typeof value == "object") {
-                var jsName = Strings.toJSName(value.value);
-                wrapperMap.put(jsName, value.value);
-                value.value = jsName;
-            }
-            return value;
-        });
-        var s = parsed.value;
+        var s = toJS(value.$c, ctxJsValue, dependencies).value;
         if (!Strings.startsWith(s, "parameters.")) {
             throw "Error parsing component name '"+keyValue+"'";
         }
-        id.put("sync", wrapWithMap(wrapperMap, "function (__val) {if (typeof __val != 'undefined') "+s+" = __val; return "+s+";}"));
+        var names=[];
+        addNamesForWrap(names, s);
+        id.put("sync", wrapEventFunction(names, "function (__val) {if (typeof __val != 'undefined') "+s+" = __val; return "+s+";}"));
     });
 
     function arrayContains(a, obj) {
@@ -3266,27 +3248,63 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
         return false;
     }
 
-    function listenerForEventFunction() {
-        var names = [];
-        function listen(type, name) {
-            if (type == 'function params') {
-                var baseName = name,
-                     index = baseName.indexOf('.');
-                if (index>-1) baseName = baseName.substr(0, index);
-                if (!ignoredNames[baseName] && !arrayContains(names, baseName) && baseName!="null" && (""+(1*baseName))!=baseName) names.push(baseName);
+    function notNumberOrString(str) {
+        var c = str.charAt(0);
+        return c != "'" && c != '"' && (c<'0' || c>'9');
+    }
+
+    function addNamesForWrap(names, value) {
+        var r = value.match(/([\w_\."']+)/g);
+        if (r) {
+            for (var i = 0; i < r.length; i++) {
+                var baseName = r[i],
+                    index = baseName.indexOf('.');
+                if (index>0) baseName = baseName.substr(0, index);
+                if (index != 0 && !ignoredNames[baseName]  && !arrayContains(names, baseName) && notNumberOrString(baseName)) {
+                    names.push(baseName);
+                }
             }
+        }
+    }
+
+    function isSplitter(str, index) {
+        return index < 0 || str.length <= index || str.charAt(index).match(/([\w_])/g);
+
+    }
+
+    function insert(str, i, what, remove) {
+        var result = (i>0 ? str.substr(0, i) : "")+what, from = remove>0 ? remove + i : i;
+        if (from+1<str.length) result += str.substr(from);
+        return result;
+    }
+
+    function wrapEventFunction(names, func) {
+        if (names.length>0) {
+            var params = "", body = func, i,l;
+            for (i = 0; i < names.length; i++) {
+                var name = names[i], jsName = Strings.toJSName(name);
+                if (jsName != name) {
+                    while (true) {
+                        l = body.indexOf(name);
+                        if (l<0) break;
+                        if (isSplitter(body, l-1) && isSplitter(body, l+name.length)) body = insert(body, l, jsName, name.length);
+                        else break;
+                    }
+                }
+                if (i>0) params += ", "+jsName;
+                else params = jsName;
+            }
+            return "(function ("+params+"){return "+body+"})("+names.join(', ')+")";
+        }
+        return func;
+    }
+
+    function listenerForEventFunction(names) {
+
+        function listen(type, name) {
+            if (type == 'function params') addNamesForWrap(names, name);
             return name;
         }
-
-        function wrapEventFunction(func) {
-            if (names.length>0) {
-                var joined = names.join(', ');
-                return "(function ("+joined+"){return "+func+"})("+joined+")";
-            }
-            return func;
-        }
-
-        listen.wrapEventFunction=wrapEventFunction;
 
         return listen;
     }
@@ -3314,9 +3332,10 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
                     attributes.remove(name);
                 } else if (Strings.startsWith(nameLowerCase, "on")) {
                     if (!id) id = new Map();
-                    var listener = listenerForEventFunction(),
+                    var names = [];
+                    var listener = listenerForEventFunction(names),
                         eventFunction = "function (event, element) {"+toJS(value.$c, ctxJs,  dependencies, listener).value+"}";
-                    id.put(nameLowerCase, listener.wrapEventFunction(eventFunction));
+                    id.put(nameLowerCase, wrapEventFunction(names, eventFunction));
                     attributes.remove(name);
                 }
             }
@@ -3778,11 +3797,6 @@ define('compiler/HtmlParser',['compiler/Strings', 'compiler/Tag', 'compiler/Pars
             while (start<length) if (value.charAt(start--)=='\\') count++; else break;
         }
         return count;
-    }
-
-    function wrapWithMap(/*Map*/map, js) {
-        if (map.size()==0) return js;
-        return "(function ("+map.keys().join(", ")+") {return "+js+"})("+map.values().join(", ")+")";
     }
 
     return HtmlParser;
