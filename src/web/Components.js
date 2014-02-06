@@ -575,9 +575,10 @@ define(['web/Listeners'], function (Listeners) {
     /**
      * Recalls beforeCreate, create and afterCreate but using the same instance
      * for repainting the component
-     * @param callBack function called after recreation (null is supported)
+     * param callBack function called after recreation (null is supported)
      */
-    Instance.prototype.reCreate = function (callBack) {
+    Instance.prototype.reCreate = function () {
+        var callBack = arguments.length==1 ? arguments[0] : null;
         var /*Instance*/instance = this;
         if (!instance.isDestroyed) {
             var parameters = instance.getParameters();
