@@ -83,7 +83,7 @@ define([], function () {
         return s;
     }
 
-    var decodeStringTokens = [String.fromCharCode(13), "\t", "\n", "'", "\\"], decodeStringSymbols = ["", "\\t", "\\n", "\\'", "\\\\"];
+    var decodeStringTokens = ["\t", "\n", "'", "\\"], decodeStringSymbols = ["\\t", "\\n", "\\'", "\\\\"];
 
     /**
      * Converts string to a string fine for JS variable value
