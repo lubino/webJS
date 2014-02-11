@@ -1,41 +1,41 @@
 
-define('compiler/Strings',[],function () {
+define('compiler/Strings',[], function () {
 
-    function replace(s, searchValue, newValue){
-        var i= 0, len1 = searchValue.length, len2 = newValue.length;
-        while ((i=s.indexOf(searchValue,i))!=-1) {
-            var b = i>1 ? s.substr(0, i) : "";
-            var e = i+len1<s.length ? s.substr(i+len1) : "";
-            s = b+newValue+e;
+    function replace(s, searchValue, newValue) {
+        var i = 0, len1 = searchValue.length, len2 = newValue.length;
+        while ((i = s.indexOf(searchValue, i)) != -1) {
+            var b = i > 1 ? s.substr(0, i) : "";
+            var e = i + len1 < s.length ? s.substr(i + len1) : "";
+            s = b + newValue + e;
             i += len2;
         }
         return s;
     }
 
-    function trim(s){
+    function trim(s) {
         return s.replace(/^\s+|\s+$/g, '');
     }
 
     function startsWith(s, key, at) {
         if (typeof at != "number") at = 0;
-        return s.indexOf(key)==at;
+        return s.indexOf(key) == at;
     }
 
     function endsWith(s, key) {
-        var looksAt = s.length-key.length;
-        return looksAt>=0 && s.indexOf(key) == looksAt;
+        var looksAt = s.length - key.length;
+        return looksAt >= 0 && s.indexOf(key) == looksAt;
     }
 
     function regionMatches(s, start, key) {
-        return s.indexOf(key, start)== start;
+        return s.indexOf(key, start) == start;
     }
 
     function removeWhiteSpaces(s) {
         if (!s) return s;
         var r = "", last = ' ';
-        for (var i =0;i< s.length;i++) {
+        for (var i = 0; i < s.length; i++) {
             var c = s.charAt(i);
-            if (c<'!') c= ' ';
+            if (c < '!') c = ' ';
             if (c != ' ' || last != ' ') {
                 r += last = c;
             }
@@ -45,7 +45,7 @@ define('compiler/Strings',[],function () {
 
     function replaceWith(/*String*/ s, /*Object*/o) {
         for (var key in o) {
-            var attKey = ""+key;
+            var attKey = "" + key;
             var att = "${"+key+"}";
             s = replace(s, att, String(o[attKey]));
         }
@@ -57,7 +57,7 @@ define('compiler/Strings',[],function () {
      * @param s some string
      */
     function toJSString(s) {
-        return "'"+encodeString(s)+"'";
+        return "'" + encodeString(s) + "'";
     }
 
     /**
@@ -66,30 +66,34 @@ define('compiler/Strings',[],function () {
      */
     function fromJSString(s) {
         //TODO do type detection
-        var length = s.length-2;
-        return length>0 ? decodeString(s.substr(1, length)) : "";
+        var length = s.length - 2;
+        return length > 0 ? decodeString(s.substr(1, length)) : "";
     }
+
+    var encodeStringTokens = [String.fromCharCode(13), "\t", "\n", "'", "\\"], encodeStringSymbols = ["", "\\t", "\\n", "\\'", "\\\\"];
 
     /**
      * Converts string to a string fine for JS variable value
      * @param s some string
      */
     function encodeString(s) {
-        var c = ["\t","\n","'", "\\"], cd = ["\\t","\\n","\\'", "\\\\"], l= c.length;
-        while (l-->0) {
-            s = replace(s, c[l], cd[l]);
+        var l = encodeStringTokens.length;
+        while (l-- > 0) {
+            s = replace(s, encodeStringTokens[l], encodeStringSymbols[l]);
         }
         return s;
     }
+
+    var decodeStringTokens = [String.fromCharCode(13), "\t", "\n", "'", "\\"], decodeStringSymbols = ["", "\\t", "\\n", "\\'", "\\\\"];
 
     /**
      * Converts string to a string fine for JS variable value
      * @param s some string
      */
     function decodeString(s) {
-        var c = ["\t","\n","'", "\\"], cd = ["\\t","\\n","\\'", "\\\\"], l= c.length;
-        while (l-->0) {
-            s = replace(s, cd[l], c[l]);
+        var l = decodeStringTokens.length;
+        while (l-- > 0) {
+            s = replace(s, decodeStringSymbols[l], decodeStringTokens[l]);
         }
         return s;
     }
@@ -106,12 +110,12 @@ define('compiler/Strings',[],function () {
      * @param s some string
      */
     function toJSName(s) {
-        var l= s.length;
-        var result="";
-        for (var i=0;i<l;i++) {
+        var l = s.length;
+        var result = "";
+        for (var i = 0; i < l; i++) {
             var c = s.charAt(i);
-            var isOK = c=='$' || c=='_';
-            if (!isOK) isOK = (c>='a' && c<='z') || (c>='A' && c<='Z');
+            var isOK = c == '$' || c == '_';
+            if (!isOK) isOK = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
             if (!result) {
                 //c is the first symbol
                 if (isOK) {
@@ -119,10 +123,10 @@ define('compiler/Strings',[],function () {
                     continue;
                 } else result = "_";
             }
-            isOK = isOK || (c>='0' && c<='9');
+            isOK = isOK || (c >= '0' && c <= '9');
             if (isOK) {
                 result += c;
-            } else if (c=='\\' || c=='/' || c=='.') {
+            } else if (c == '\\' || c == '/' || c == '.') {
                 result += "_"
             }
         }
@@ -130,7 +134,7 @@ define('compiler/Strings',[],function () {
     }
 
     function trimOne(/*String*/ s) {
-        return s>'' ? s.substring(1, s.length - 1) : "";
+        return s > '' ? s.substring(1, s.length - 1) : "";
     }
 
     function toPath(s) {
@@ -140,7 +144,6 @@ define('compiler/Strings',[],function () {
         }
         return source;
     }
-
 
 
     return {
