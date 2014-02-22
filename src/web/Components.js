@@ -159,13 +159,13 @@ define(['web/Listeners'], function (Listeners) {
 
         if (setModelValue(element, item, instance)) {
             if (changeFunction) {
-                changeFunction(event);
+                changeFunction(event, element);
                 possibleExternalChange = true;
             }
         }
 
         if (clickFunction) {
-            clickFunction(event);
+            clickFunction(event, element);
             possibleExternalChange = true;
         }
 
