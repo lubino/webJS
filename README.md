@@ -14,9 +14,10 @@ The best way to create dynamic pages and apps.
 
 # App Demo
 
-A page parsed from HTML to JavaScript. Is renders the page immediately (see source for more info) http://lubino.github.io/webJS/src/example.html
+A page parsed from HTML to JavaScript. Example "on the fly" compiles one HTML page and opens it in another page http://lubino.github.io/webJS/src/example.html
 
-And YES, it is all in JavaScript, so there in no issue to create a live parser without server connection, try http://lubino.github.io/webJS/src/compiler.html
+And YES, it is all in JavaScript, so there also is a live parser (and it works offline).
+Try http://lubino.github.io/webJS/src/compiler.html to open some HTML file from your drive. Click on "from file" button.
  
 # Quick Start
 
