@@ -16,12 +16,20 @@
 */
 
             require(['example/helloWorldComponent'], function (helloWorldComponent) {
-                helloWorldComponent();
+                helloWorldComponent("demo");
             })
         }
     </script>
 </head>
 <body onload="init()">
+<div id="demo" styles="width:80%;height:180px"></div>
+JS on this page:
+<pre>
+      require(['example/helloWorldComponent'], function (helloWorldComponent) {
+                helloWorldComponent("demo");
+      })
+</pre>
+<div id="demo" styles="width:80%;height:180px"></div>
 <script type="text/javascript">
     var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
     document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
