@@ -28,8 +28,7 @@ Just download empty_project.zip, unzip it and open the "source/index.html" file 
 
 # Simple Deployment
 
-In the end, are your HTML and JS files are joined into only one JS file.
-It's so cool!
+In the end, all your HTML and JS files are joined into one JS file. Ready to run on any page. One JS reference on page is all you need. It's so cool!
 
 
 
