@@ -14,14 +14,14 @@ The best way to create dynamic pages and apps.
 
 # App Demo
 
-A page parsed from HTML to JavaScript. Example "on the fly" compiles one HTML page and opens it in another page http://lubino.github.io/webJS/src/example.html
+A page parsed from HTML to JavaScript. This example compiles (on the fly in your browser) one HTML page and opens it as a part of another page http://lubino.github.io/webJS/src/example.html
 
-And YES, it is all in JavaScript, so there also is a live parser (and it works offline).
-Try http://lubino.github.io/webJS/src/compiler.html to open some HTML file from your drive. Click on "from file" button.
+And YES, it is all in JavaScript, so there is also a live html2javascript compiler (and it works offline).
+Open http://lubino.github.io/webJS/src/compiler.html and choose some HTML file from your drive (click on "from file" button).
  
 # Quick Start
 
-Download a ZIP file. It contains empty project file structure for quick start. http://lubino.github.io/webJS/empty_project.zip 
+Download a ZIP file. It contains empty project file structure for your quick start. http://lubino.github.io/webJS/empty_project.zip 
 
 If you want to use it for serious things, you will need nodejs platform to run build.sh script. 
 If you just want to try it in "browser based mode" for fun or development reasons, you don't need to run build.sh and you don't need any node platform. 
