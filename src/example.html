@@ -16,6 +16,7 @@
 */
 
             require(['example/helloWorldComponent'], function (helloWorldComponent) {
+                //inserts helloWorldComponent.html into HTML element with id "demo"
                 helloWorldComponent("demo");
             })
         }
@@ -46,7 +47,8 @@ define(["parse", "web/Components", "example/helloWorldTexts"], function (parse) 
 </pre>
 <h1>File example/helloWorldComponent.html</h1>
 <pre  class="panel" style="text-align:left">
-&lt;html&gt;&lt;head&gt;
+&lt;html&gt;
+&lt;head&gt;
     &lt;meta http-equiv="Content-Type" content="text/html; charset=UTF-8"&gt;
     &lt;title&gt;Example title&lt;/title&gt;
     &lt;script&gt;
@@ -60,27 +62,27 @@ define(["parse", "web/Components", "example/helloWorldTexts"], function (parse) 
             console.log('!!!!be ready for open @{example/helloWorldTexts.'+t(tt,'a')+'} component');
             callBack();
         }
-    &lt;/script&gt;
-    &lt;script&gt;
+
         function afterCreate(instance) {
             console.log('!!!!opened');
         }
 
         function send(a) {
             if (console.log) console.log("sending",a);
+            alert("Send button pressed with JSON data: "+JSON.stringify(a));
         }
     &lt;/script&gt;
 &lt;/head&gt;
 &lt;body&gt;
-&lt;script&gt;
-&lt;/script&gt;
+
 &lt;h1&gt;Hi @{example/helloWorldTexts.name}&lt;/h1&gt;
 This is ony example
 &lt;input id="parameters.a"&gt;
 &lt;input id="parameters.b" type="password"&gt;
 &lt;button onclick="send(parameters)"&gt;&lt;/button&gt;
 
-&lt;/body&gt;&lt;/html&gt;
+&lt;/body&gt;
+&lt;/html&gt;
 </pre>
 
 <script type="text/javascript">
