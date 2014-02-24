@@ -20,16 +20,69 @@
             })
         }
     </script>
+    <style>
+        h1 {
+            padding-top: 20px;
+        }
+        .panel {
+            width:700px;padding:30px; margin: 20px auto;background:white
+        }
+    </style>
 </head>
 <body onload="init()">
-<div id="demo" styles="width:80%;height:180px"></div>
-JS on this page:
-<pre>
-      require(['example/helloWorldComponent'], function (helloWorldComponent) {
-                helloWorldComponent("demo");
-      })
+<h1>Demo</h1>
+<div id="demo" class="panel" style="height:150px;"></div>
+<h1>Starting JavaScript on this Page</h1>
+<pre  class="panel" style="text-align:left">
+require(['example/helloWorldComponent'], function (page) {
+  page("demo");
+});
 </pre>
-<div id="demo" styles="width:80%;height:180px"></div>
+<h1>File example/helloWorldComponent.js</h1>
+<pre  class="panel" style="text-align:left">
+define(["parse", "web/Components", "example/helloWorldTexts"], function (parse) {
+    return parse('example/helloWorldComponent.html');
+});
+</pre>
+<h1>File example/helloWorldComponent.html</h1>
+<pre  class="panel" style="text-align:left">
+&lt;html&gt;&lt;head&gt;
+    &lt;meta http-equiv="Content-Type" content="text/html; charset=UTF-8"&gt;
+    &lt;title&gt;Example title&lt;/title&gt;
+    &lt;script&gt;
+        function t(s, a) {
+            console.log('calling t', s, a);
+            return 'name';
+        }
+
+        function beforeCreate(parameters, callBack) {
+            var tt = 1;
+            console.log('!!!!be ready for open @{example/helloWorldTexts.'+t(tt,'a')+'} component');
+            callBack();
+        }
+    &lt;/script&gt;
+    &lt;script&gt;
+        function afterCreate(instance) {
+            console.log('!!!!opened');
+        }
+
+        function send(a) {
+            if (console.log) console.log("sending",a);
+        }
+    &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;script&gt;
+&lt;/script&gt;
+&lt;h1&gt;Hi @{example/helloWorldTexts.name}&lt;/h1&gt;
+This is ony example
+&lt;input id="parameters.a"&gt;
+&lt;input id="parameters.b" type="password"&gt;
+&lt;button onclick="send(parameters)"&gt;&lt;/button&gt;
+
+&lt;/body&gt;&lt;/html&gt;
+</pre>
+
 <script type="text/javascript">
     var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
     document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
