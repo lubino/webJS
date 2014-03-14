@@ -1,4 +1,4 @@
-# webJS: HTML2JavaScript conversion tool 
+# webJS: HTML2JS compiler for Single Page Interface web apps
 Browser-side MVP component based framework for single page interface written in JavaScript. See http://lubino.github.com/webJS/ for more info.
  
 JavaScript library for online/offline web pages and apps. 
