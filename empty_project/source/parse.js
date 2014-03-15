@@ -4253,8 +4253,43 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
         }
     }
 
+    function compileHTML(name, fileContent, cs, runParameters) {
+        var dependencies = new DependenciesMapper();
+        //noinspection JSValidateTypes
+        var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
+        var /*InputStream*/ input = new InputStream(fileContent);
+        var js = parser.parse(input, cs);
+        return HtmlParser.doRequireModule(js, dependencies);
+    }
+
+    function compileProperties(cs, runParameters, callBack) {
+        var dependencies = new DependenciesMapper();
+        var lineSeparator = "\n";
+        //noinspection JSValidateTypes
+
+        var result = "", lastName;
+
+        function next(name, fileContent) {
+            var /*InputStream*/ input = new InputStream(fileContent);
+            var out = PropertiesParser.parseProperties(name, input, dependencies, cs, runParameters);
+            if (!result) result = out;
+            else result += lineSeparator + out;
+            lastName = name;
+        }
+
+        function finish(){
+            var s = PropertiesParser.finishProperties(lastName, result, dependencies);
+            return PropertiesParser.doRequireModule(s, dependencies);
+        }
+
+        callBack(next, finish);
+
+    }
+
     return {
         parseType: parseType,
+        compileHTML: compileHTML,
+        compileProperties: compileProperties,
         build: build,
         defaultConfig: defaultConfig,
         author: "Lubos Strapko (https://github.com/lubino)"

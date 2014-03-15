@@ -1,6 +1,6 @@
 {
     "name": "webjs-express",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Template engine and HTML2JS compiler for Single Page Interface web apps",
     "main": "index.js",
     "scripts": {

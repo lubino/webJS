@@ -1,4 +1,4 @@
-define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Build) {
+define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, compile) {
 
     var fs = require('fs');
 
@@ -6,7 +6,7 @@ define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Buil
         if (fileName.substr(0, length)==fileWithoutExtension) {
             var ext = fileName.lastIndexOf('.');
             if (ext>length && fileName.substr(ext)==".properties") {
-                return fileName.substr(length+1, ext-length-2);
+                return fileName.substr(length+1, ext-length-1);
             }
         }
         return null;
@@ -21,6 +21,7 @@ define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Buil
         if (!logger) logger = {log: function (a, b) {
             console.log(a, b)
         }};
+        var runParameters = compile.defaultConfig();
         cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger);
         function expressUseCallBack(req, res, next) {
             var path = req.path, length;
@@ -32,6 +33,7 @@ define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Buil
                             fs.readFile(jsFile, function (err, data) {
                                 if (err) {
                                     //todo log error
+                                    console.log(err);
                                     next();
                                 } else {
                                     res.set('Content-Type', 'text/javascript');
@@ -40,32 +42,69 @@ define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Buil
                             });
                         } else next();
                     } else {
-                        var fileWithoutExtension = rootDir + path.substr(0, length - 2);
-                        fs.exists(fileWithoutExtension + "html", function (exists) {
+                        var name = path.substr(0, length - 3);
+                        var fileWithoutExtension = rootDir + name;
+                        var htmlFile = fileWithoutExtension + ".html";
+                        fs.exists(htmlFile, function (exists) {
                             if (exists) {
-                                res.set('Content-Type', 'text/javascript');
-                                //TODO Compile HTML component
-                                res.send("... HTML");
+                                fs.readFile(htmlFile, function (err, data) {
+                                    if (err) {
+                                        //todo log error
+                                        console.log(err);
+                                        next();
+                                    } else {
+                                        res.set('Content-Type', 'text/javascript');
+                                        var content = data.toString(runParameters.inputCharset);
+                                        if (content.indexOf('\uFEFF') === 0) {
+                                            content = content.substring(1, data.length);
+                                        }
+                                        res.send(compile.compileHTML(name.substr(1), content, cs, runParameters));
+                                    }
+                                });
                             } else {
                                 var hasSlash = fileWithoutExtension.lastIndexOf('/'),
                                     filePath = hasSlash>0 ? fileWithoutExtension.substr(0, hasSlash) : "",
                                     fileName = hasSlash>=0 ? fileWithoutExtension.substr(hasSlash+1) : fileWithoutExtension;
-                                fs.readdir(rootDir+filePath, function (err, files) {
+                                fs.readdir(filePath, function (err, files) {
                                     if (err) {
                                         //todo log error
+                                        console.log(err);
                                         next();
                                     } else {
-                                        var filesCount = files.length, fileNameLength = fileName.length, result;
+                                        var filesCount = files.length, fileNameLength = fileName.length, locales = [],
+                                            sname = name.substr(1);
+
                                         files.forEach(function (file) {
                                             var locale = propertyFileLocale(fileName, fileNameLength, file);
                                             if (locale) {
-                                                //TODO Compile Properties component
-                                                result = "... Properties";
+                                                locales.push(locale);
                                             }
                                             if (filesCount--==1) {
-                                                if (result) {
-                                                    res.set('Content-Type', 'text/javascript');
-                                                    res.send(result);
+                                                if (locales.length>0) {
+                                                    compile.compileProperties(cs, runParameters, function (nxt, finish) {
+                                                        var li=0;
+                                                        function ili() {
+                                                            var locale = locales[li++];
+                                                            if (!locale) {
+                                                                res.set('Content-Type', 'text/javascript');
+                                                                res.send(finish());
+                                                            } else fs.readFile(filePath+'/'+sname+"_"+locale+".properties", function (err, data) {
+                                                                if (err) {
+                                                                    //todo log error
+                                                                    console.log(err);
+                                                                    next();
+                                                                } else {
+                                                                    var content = data.toString(runParameters.inputCharset);
+                                                                    if (content.indexOf('\uFEFF') === 0) {
+                                                                        content = content.substring(1, data.length);
+                                                                    }
+                                                                    nxt(sname+"_"+locale, content);
+                                                                    ili();
+                                                                }
+                                                            });
+                                                        }
+                                                        ili();
+                                                    });
                                                 } else {
                                                     next();
                                                 }
