@@ -4043,7 +4043,7 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
             log("\n" +
                 "Usage: node r.js -lib w.js [options] -source SOURCE_DIR -dest DESTINATION_DIR" +
                 "\n" +
-                "where options include:\n" +
+                " where options include:\n" +
                 "  -exclude PARAMETER   to set the \"exclude\" regular expression for source files\n" +
                 "  -create PARAMETER      to set the \"createInstance\" parameter\n" +
                 "                         (Default: \"Components.createInstance\")\n" +
@@ -4066,10 +4066,11 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
                 "\n" +
                 "Replace usage: node r.js -lib w.js [options] -replace DESTINATION_FILE -with SOURCE_FILE\n" +
                 "\n" +
-                "which replaces string '/*REQUIRE_BUILD*/' in SOURCE_FILE with content in DESTINATION_FILE\n" +
-                "where options include the same options parameters as in first case." +
+                " which replaces string '/*REQUIRE_BUILD*/' in SOURCE_FILE with content in DESTINATION_FILE\n" +
+                " where options include the same options parameters as in first case." +
                 "\n" +
-                "Author: Lubos Strapko (https://github.com/lubino)");
+                "Author: Lubos Strapko (https://github.com/lubino)" +
+                "\n");
             throw "Required start parameters not included!";
         }
 
@@ -4158,7 +4159,13 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
         if (runParameters.replaceFile && runParameters.contentFile) {
             var /*String*/ replaceFile = file.readFile(runParameters.replaceFile, runParameters.inputCharset);
             var /*String*/ content = file.readFile(runParameters.contentFile, runParameters.inputCharset);
-            replaceFile = replaceFile.replace('/*REQUIRE_BUILD*/', content);
+            var ri = 0;
+            var searchString = '/*REQUIRE_BUILD*/';
+            while ((ri= replaceFile.indexOf(searchString, ri))>=0) {
+                //replaceFile = ""+ri;
+                replaceFile = replaceFile.substr(0, ri) + content + replaceFile.substr(ri+searchString.length);
+                ri += content.length;
+            }
             file.saveFile(runParameters.replaceFile, replaceFile, runParameters.outputCharset);
         }
     }

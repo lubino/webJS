@@ -1,4 +1,108 @@
+var cache = {}, definitions = {};
 
+
+//loads module from cache or execute "define" function to get module
+function reqModule(moduleDependenciesArray, callBackFunc) {
+    var values = [], i = 0, module;
+    while (i < moduleDependenciesArray.length) {
+        //if module is not cached already, run the definition callBackFunc and cache it
+        if (!cache[module = moduleDependenciesArray[i++]]) cache[module] = [reqModule(definitions[module][0], definitions[module][1])];
+
+        //add next argument for calling callBackFunc
+        values.push(cache[module][0]);
+    }
+
+    //call the
+    return callBackFunc.apply(null, values);
+}
+
+function pipe(a) {
+    return a
+}
+
+//minimalistic function for "requirejs"
+function requirejs(moduleDependenciesArray, callBackFunc) {
+    return reqModule(typeof moduleDependenciesArray == 'string' ? [moduleDependenciesArray] : moduleDependenciesArray, callBackFunc ? callBackFunc : pipe);
+}
+
+//minimalistic function for "define"
+function define(name, moduleDependenciesArray, callBackFunc) {
+    definitions[name] = [moduleDependenciesArray, callBackFunc]
+}
+
+
+
+define('compiler/Map',[],function () {
+
+    /**
+     * Map
+     * @constructor Map
+     */
+    function Map() {
+
+        var map = {};
+        var _keys = [];
+        var _values = [];
+
+        function size() {
+            return _keys.length;
+        }
+
+        function keys() {
+            return _keys;
+        }
+
+        function values() {
+            return _values;
+        }
+
+        function containsKey(key) {
+            return typeof map[key] != "undefined";
+        }
+
+        function add(key) {
+            map[key] = _keys.length;
+            _keys.push(key);
+            _values.push(key);
+        }
+
+        function put(key, value) {
+            map[key] = _keys.length;
+            _keys.push(key);
+            _values.push(value);
+        }
+
+        function getValue(key) {
+            var i = map[key];
+            if (typeof i == 'undefined') return null;
+            return _values[i];
+        }
+
+        function remove(key) {
+            var i = map[key];
+            if (typeof i == 'undefined') return null;
+            delete map[key];
+            for (var field in map) {
+                var otherKey = ""+field;
+                if (map[otherKey]>i) map[otherKey]--;
+            }
+            _keys.splice(i,1);
+            return _values.splice(i,1);
+        }
+
+        this.size = size;
+        this.contains = containsKey;
+        this.containsKey = containsKey;
+        this.keys = keys;
+        this.values = values;
+        this.put = put;
+        this.get = getValue;
+        this.add = add;
+        this.remove = remove;
+    }
+
+    return Map;
+});
 define('compiler/Strings',[], function () {
 
     function replace(s, searchValue, newValue) {
@@ -164,476 +268,6 @@ define('compiler/Strings',[], function () {
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
-define('compiler/Map',[],function () {
-
-    /**
-     * Map
-     * @constructor Map
-     */
-    function Map() {
-
-        var map = {};
-        var _keys = [];
-        var _values = [];
-
-        function size() {
-            return _keys.length;
-        }
-
-        function keys() {
-            return _keys;
-        }
-
-        function values() {
-            return _values;
-        }
-
-        function containsKey(key) {
-            return typeof map[key] != "undefined";
-        }
-
-        function add(key) {
-            map[key] = _keys.length;
-            _keys.push(key);
-            _values.push(key);
-        }
-
-        function put(key, value) {
-            map[key] = _keys.length;
-            _keys.push(key);
-            _values.push(value);
-        }
-
-        function getValue(key) {
-            var i = map[key];
-            if (typeof i == 'undefined') return null;
-            return _values[i];
-        }
-
-        function remove(key) {
-            var i = map[key];
-            if (typeof i == 'undefined') return null;
-            delete map[key];
-            for (var field in map) {
-                var otherKey = ""+field;
-                if (map[otherKey]>i) map[otherKey]--;
-            }
-            _keys.splice(i,1);
-            return _values.splice(i,1);
-        }
-
-        this.size = size;
-        this.contains = containsKey;
-        this.containsKey = containsKey;
-        this.keys = keys;
-        this.values = values;
-        this.put = put;
-        this.get = getValue;
-        this.add = add;
-        this.remove = remove;
-    }
-
-    return Map;
-});
-define('compiler/Brackets',[], function () {
-
-
-    var /*String[]*/ startings = ['{', '[', '('];
-    var /*String[]*/ endings = ['}', ']', ')'];
-
-    function isStarting(c) {
-        return c=='{' || c== '[' || c== '(';
-    }
-    function isEnding(c) {
-        return c=='}' || c== ']' || c== ')';
-    }
-    function endingTo(c) {
-        switch (c) {
-            case '{': return '}';
-            case '[': return ']';
-            case '(': return ')';
-        }
-        return null;
-    }
-
-    function Brackets(/*String 1*/ starting, /*String 1*/ ending, /*int*/ start, /*int*/ end, /*int[]*/ comas) {
-        this.starting = starting;
-        this.ending = ending;
-        this.start = start;
-        this.end = end;
-        this.comas = comas;
-    }
-
-    function findEndingBracket(/*String*/ js, /*int*/ start, starting, ending) {
-        var /*int*/ i = start;
-        var /*int*/ count = 1;
-        var /*int*/ end = js.length;
-        while (i++ < end) {
-            var c = js.charAt(i);
-            if (c==starting) {
-                count++;
-            } else if (c==ending) {
-                count--;
-                if (count==0) return i;
-            }
-        }
-        return -1;
-    }
-
-
-    function _findEndingBracket(/*String*/ js, /*int*/ start, /*int*/ end) {
-        var /*int*/ i = start;
-        var /*int*/ count = 1;
-        var /*Array*/ result = null;
-
-        while (i++ < end) {
-            var c = js.charAt(i);
-            if (isStarting(c)) {
-                count++;
-            } else if (isEnding(c)) {
-                count--;
-                if (count==0) {
-                    //TODO wrong bracket if (c != ending) throw RuntimeException();
-                    return new Bracket(i, result);
-                }
-            } else if (c==',' && count == 1) {
-                if (!result) result = [];
-                result.push(i);
-            }
-        }
-        return new Bracket(-1, null);
-    }
-
-    function _findEndingBracketInput(/*InputStream*/ input, type) {
-        var start = input.getPosition();
-        var /*String[]*/ level = [endingTo(type)];
-        var length = level.length;
-        var /*Array*/ result = null;
-        var lastType = '';
-        var c;
-
-        while (c = input.read()) {
-            if (isStarting(c)) {
-                lastType = endingTo(c);
-                level.push(lastType);
-            } else if (c == lastType) {
-                level.pop();
-                length = level.length;
-                if (length==0) {
-                    return new Bracket(input.getPosition(), result);
-                }
-                lastType = level[length-1];
-            } else if (c==',' && length == 1) {
-                if (!result) result = [];
-                result.push(input.getPosition());
-            }
-        }
-        throw "Can't find ending bracket to '"+input.errorAt(start)+"'";
-    }
-
-    function Bracket(/*int*/ end, /*Array*/ result) {
-        this.end = end; //index of bracket
-        var comas; // indexes of comas
-
-        if (result) {
-            var /*int*/ size = result.length;
-            if (size > 0) {
-                comas = [];
-                for (var i = 0;i< result.length;i++) {
-                    comas.push(result[i]);
-                }
-                comas[size] = end;
-            }
-        }
-        this.comas = comas;
-    }
-
-    /**
-     * Find brackets in js
-     * @param js the JavaScript resource
-     * @param start index of first letter of script
-     * @param end index of last letter of script
-     * @return
-     */
-    function findFirst(/*String*/ js, /*int*/ start, /*int*/ end) {
-        var /*int*/ firstIndex = end;
-        var /*int*/ first = -1;
-        for (var i = 0; i < startings.length; i++) {
-            var /*int*/ p = js.indexOf(startings[i], start);
-            if (p<firstIndex && p>=0) {
-                firstIndex = p;
-                first = i;
-            }
-        }
-        if (first>=0) {
-            var starting = startings[first];
-            var ending = endings[first];
-            var endingBracket = _findEndingBracket(js, firstIndex, end);
-            return new Brackets(starting, ending, firstIndex, endingBracket.end, endingBracket.comas);
-        }
-        return  null;
-    }
-
-    /**
-     * finds ending bracket of typy 'type'
-     * @param input
-     * @param type
-     */
-    function findEnd(/*InputStream*/ input, type) {
-        var start = input.getPosition();
-        return type+input.cutString(start, _findEndingBracketInput(input, type).end);
-    }
-
-    Brackets.findEndingBracket = findEndingBracket;
-    Brackets.findFirst = findFirst;
-    Brackets.findEnd = findEnd;
-
-    return Brackets;
-});
-define('compiler/ParsedText',['compiler/Strings'], function () {
-    function ParsedText() {
-
-
-        var content = [];
-        var lastIsString = false;
-
-        this.$c = content;
-        this.empty = function () {
-            return content.length == 0;
-        };
-        this.clear = function () {
-            lastIsString = false;
-            this.$c = content = [];
-        };
-        this.addSpecial = function (special) {
-            lastIsString = false;
-            content.push(special);
-        };
-        this.removeLastChar = function () {
-            if (lastIsString) {
-                var l = content.length - 1;
-                content[l] = content[l].substr(0, content[l].length-1);
-            }
-        };
-        this.addChar = function (c) {
-            if (!lastIsString) {
-                lastIsString = true;
-                content.push(c);
-            } else {
-                var l = content.length - 1;
-                content[l] = content[l]+c;
-            }
-        };
-    }
-    return ParsedText;
-});
-define('compiler/Tag',['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (Map, Brackets, ParsedText) {
-
-        function isSpecialSymbol(c, after) {
-            return after == '{' && (c == '@' || c == '$');
-        }
-
-        function readString(/*InputStream*/ input, /*String*/ type, /*HtmlParser*/ parser, /*ParsedText*/ value) {
-            var c, last='', i = input.getPosition();
-            while ((c=input.read())) {
-                if (c==type) {
-                    return;
-                }
-                if (isSpecialSymbol(last, c)) {
-                    value.removeLastChar();
-                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                } else {
-                    value.addChar(c);
-                    last = c;
-                }
-            }
-            throw "Can't find end of string from '"+input.errorAt(i)+"'";
-        }
-
-        function readSpecialTag(/*InputStream*/ input, /*HtmlParser*/ parser) {
-            var c, last = '';
-
-            //noinspection JSValidateTypes
-            var /*ParsedText*/ value = new ParsedText();
-            while (c = input.read()) {
-                if (isSpecialSymbol(last, c)) {
-                    parser.parsingSpecial(last);
-                    value.removeLastChar();
-                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                    c = input.read();
-                }
-                if (c == '{') {
-                    value.addChar(Brackets.findEnd(input, c));
-                }
-                if (c == '"' || c == "'") {
-                    value.addChar(c);
-                    readString(input, c, parser, value);
-                }
-                if (c == '}') {
-                    break;
-                }
-                value.addChar(c);
-                last = c;
-            }
-
-            return value;
-        }
-
-        function parseTagName(/*InputStream*/ input) {
-            var c, last = '', name="";
-            while (c=input.read()) {
-                if (isSpecialSymbol(last, c)) {
-                    throw "Tag name with symbols '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'";
-                }
-                if (c==">") {
-                    input.setRelative(-1);
-                    return name;
-                }
-                if (c>='!') {
-                    name+=c;
-                    last = c;
-                } else if (name) {
-                    break;
-                }
-            }
-            return name.toLowerCase();
-        }
-
-        function parseTagWithAttributes(/*InputStream*/ input, /*HtmlParser*/ parser, /*ConsoleStack*/ cs) {
-            parser.parsingTag();
-            try {
-                var c, last;
-                var /*String*/ tagName = parseTagName(input);
-
-                //noinspection JSValidateTypes
-                var /*Map*/ attributes = new Map();
-
-                while (true) {
-                    //find next parameter ignoring white spaces
-                    last = '';
-                    while (c = input.read()) {
-                        if (c>='!') break;
-                    }
-
-                    var /*String*/ name = "";
-                    if (c != '>') {
-                        name+=c;
-                        var notOK = input.getPosition();
-                        //parse attribute name
-                        while (c = input.read()) {
-                            if (isSpecialSymbol(last, c)) {
-                                if (cs) cs.addError("Symbol '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'");
-                                return null;
-                            }
-                            if (c=="=" || c == ">") {
-                                notOK = false;
-                                break;
-                            }
-                            if (c>='!') {
-                                name+=c;
-                                last = c;
-                            } else {
-                                while (c && c < '!') {
-                                    last = c;
-                                    c = input.read();
-                                    if (c != '=' || c != '>') {
-                                        input.setRelative(-1);
-                                        break;
-                                    }
-                                }
-                                notOK = false;
-                                break;
-                            }
-                        }
-                        if (notOK) {
-                            if (cs) cs.addError("Can't find end of attribute in '"+input.errorAt(notOK)+"'");
-                            return null;
-                        }
-                    } else {
-                        break;
-                    }
-
-                    var /*ParsedText*/ value = null;
-                    if (c == "=") {
-                        //noinspection JSValidateTypes
-                        notOK = input.getPosition();
-                        //parse attribute value
-                        var type = '';
-                        last = c;
-                        while (c=input.read()) {
-                            if (c>='!') break
-                        }
-                        if (c=='"' || c=="'") {
-                            last = type = c;
-                            c = input.read();
-                        }
-                        value = new ParsedText();
-                        if (c != type && c!='>') {
-                            value.addChar(c);
-                            last = c;
-                            while (c = input.read()) {
-                                if (isSpecialSymbol(last, c)) {
-                                    parser.parsingSpecial(last);
-                                    value.removeLastChar();
-                                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                                    last = '';
-                                    c = input.read();
-                                }
-                                if (type == '') {
-                                    if (c == ">") {
-                                        notOK = false;
-                                        input.setRelative(-1);
-                                        break;
-                                    }
-                                    if (c < '!') {
-                                        notOK = false;
-                                        break;
-                                    }
-                                } else {
-                                    if (c == type) {
-                                        notOK = false;
-                                        break;
-                                    } else if (c=='>') {
-                                        if (cs) cs.addWarning("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
-                                        notOK = false;
-                                        break;
-                                    }
-                                }
-                                value.addChar(c);
-                                last = c;
-                            }
-                            if (notOK) {
-                                if (cs) cs.addError("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
-                                return null;
-                            }
-                        } else {
-                            value.addChar("");
-                        }
-                    }
-
-                    if (name!="/" || value !== null) attributes.put(name, value);
-                    if (c=='>') {
-                        break;
-                    }
-                }
-                parser.parseTag(tagName, attributes);
-                return tagName;
-            } catch (e) {
-                if (cs) cs.addError(e);
-            }
-            return null;
-        }
-
-        return {
-            parseTagWithAttributes: parseTagWithAttributes,
-            isSpecialSymbol: isSpecialSymbol,
-            readSpecialTag: readSpecialTag,
-            author: "Lubos Strapko (https://github.com/lubino)"
-        };
-    }
-
-)
-;
 define('compiler/MetaFunction',[],function () {
 
     function MetaFunction(/*String*/ name, /*String[]*/ parameters, /*String*/ body, /*String*/ description, /*String[]*/ parametersDescription, /*String*/ returns) {
@@ -1110,6 +744,405 @@ define('compiler/ConsoleStack',['compiler/Map', 'compiler/Strings', 'compiler/Me
 
     return ConsoleStack;
 });
+define('compiler/Brackets',[], function () {
+
+
+    var /*String[]*/ startings = ['{', '[', '('];
+    var /*String[]*/ endings = ['}', ']', ')'];
+
+    function isStarting(c) {
+        return c=='{' || c== '[' || c== '(';
+    }
+    function isEnding(c) {
+        return c=='}' || c== ']' || c== ')';
+    }
+    function endingTo(c) {
+        switch (c) {
+            case '{': return '}';
+            case '[': return ']';
+            case '(': return ')';
+        }
+        return null;
+    }
+
+    function Brackets(/*String 1*/ starting, /*String 1*/ ending, /*int*/ start, /*int*/ end, /*int[]*/ comas) {
+        this.starting = starting;
+        this.ending = ending;
+        this.start = start;
+        this.end = end;
+        this.comas = comas;
+    }
+
+    function findEndingBracket(/*String*/ js, /*int*/ start, starting, ending) {
+        var /*int*/ i = start;
+        var /*int*/ count = 1;
+        var /*int*/ end = js.length;
+        while (i++ < end) {
+            var c = js.charAt(i);
+            if (c==starting) {
+                count++;
+            } else if (c==ending) {
+                count--;
+                if (count==0) return i;
+            }
+        }
+        return -1;
+    }
+
+
+    function _findEndingBracket(/*String*/ js, /*int*/ start, /*int*/ end) {
+        var /*int*/ i = start;
+        var /*int*/ count = 1;
+        var /*Array*/ result = null;
+
+        while (i++ < end) {
+            var c = js.charAt(i);
+            if (isStarting(c)) {
+                count++;
+            } else if (isEnding(c)) {
+                count--;
+                if (count==0) {
+                    //TODO wrong bracket if (c != ending) throw RuntimeException();
+                    return new Bracket(i, result);
+                }
+            } else if (c==',' && count == 1) {
+                if (!result) result = [];
+                result.push(i);
+            }
+        }
+        return new Bracket(-1, null);
+    }
+
+    function _findEndingBracketInput(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        var /*String[]*/ level = [endingTo(type)];
+        var length = level.length;
+        var /*Array*/ result = null;
+        var lastType = '';
+        var c;
+
+        while (c = input.read()) {
+            if (isStarting(c)) {
+                lastType = endingTo(c);
+                level.push(lastType);
+            } else if (c == lastType) {
+                level.pop();
+                length = level.length;
+                if (length==0) {
+                    return new Bracket(input.getPosition(), result);
+                }
+                lastType = level[length-1];
+            } else if (c==',' && length == 1) {
+                if (!result) result = [];
+                result.push(input.getPosition());
+            }
+        }
+        throw "Can't find ending bracket to '"+input.errorAt(start)+"'";
+    }
+
+    function Bracket(/*int*/ end, /*Array*/ result) {
+        this.end = end; //index of bracket
+        var comas; // indexes of comas
+
+        if (result) {
+            var /*int*/ size = result.length;
+            if (size > 0) {
+                comas = [];
+                for (var i = 0;i< result.length;i++) {
+                    comas.push(result[i]);
+                }
+                comas[size] = end;
+            }
+        }
+        this.comas = comas;
+    }
+
+    /**
+     * Find brackets in js
+     * @param js the JavaScript resource
+     * @param start index of first letter of script
+     * @param end index of last letter of script
+     * @return
+     */
+    function findFirst(/*String*/ js, /*int*/ start, /*int*/ end) {
+        var /*int*/ firstIndex = end;
+        var /*int*/ first = -1;
+        for (var i = 0; i < startings.length; i++) {
+            var /*int*/ p = js.indexOf(startings[i], start);
+            if (p<firstIndex && p>=0) {
+                firstIndex = p;
+                first = i;
+            }
+        }
+        if (first>=0) {
+            var starting = startings[first];
+            var ending = endings[first];
+            var endingBracket = _findEndingBracket(js, firstIndex, end);
+            return new Brackets(starting, ending, firstIndex, endingBracket.end, endingBracket.comas);
+        }
+        return  null;
+    }
+
+    /**
+     * finds ending bracket of typy 'type'
+     * @param input
+     * @param type
+     */
+    function findEnd(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        return type+input.cutString(start, _findEndingBracketInput(input, type).end);
+    }
+
+    Brackets.findEndingBracket = findEndingBracket;
+    Brackets.findFirst = findFirst;
+    Brackets.findEnd = findEnd;
+
+    return Brackets;
+});
+define('compiler/ParsedText',['compiler/Strings'], function () {
+    function ParsedText() {
+
+
+        var content = [];
+        var lastIsString = false;
+
+        this.$c = content;
+        this.empty = function () {
+            return content.length == 0;
+        };
+        this.clear = function () {
+            lastIsString = false;
+            this.$c = content = [];
+        };
+        this.addSpecial = function (special) {
+            lastIsString = false;
+            content.push(special);
+        };
+        this.removeLastChar = function () {
+            if (lastIsString) {
+                var l = content.length - 1;
+                content[l] = content[l].substr(0, content[l].length-1);
+            }
+        };
+        this.addChar = function (c) {
+            if (!lastIsString) {
+                lastIsString = true;
+                content.push(c);
+            } else {
+                var l = content.length - 1;
+                content[l] = content[l]+c;
+            }
+        };
+    }
+    return ParsedText;
+});
+define('compiler/Tag',['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (Map, Brackets, ParsedText) {
+
+        function isSpecialSymbol(c, after) {
+            return after == '{' && (c == '@' || c == '$');
+        }
+
+        function readString(/*InputStream*/ input, /*String*/ type, /*HtmlParser*/ parser, /*ParsedText*/ value) {
+            var c, last='', i = input.getPosition();
+            while ((c=input.read())) {
+                if (c==type) {
+                    return;
+                }
+                if (isSpecialSymbol(last, c)) {
+                    value.removeLastChar();
+                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                } else {
+                    value.addChar(c);
+                    last = c;
+                }
+            }
+            throw "Can't find end of string from '"+input.errorAt(i)+"'";
+        }
+
+        function readSpecialTag(/*InputStream*/ input, /*HtmlParser*/ parser) {
+            var c, last = '';
+
+            //noinspection JSValidateTypes
+            var /*ParsedText*/ value = new ParsedText();
+            while (c = input.read()) {
+                if (isSpecialSymbol(last, c)) {
+                    parser.parsingSpecial(last);
+                    value.removeLastChar();
+                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                    c = input.read();
+                }
+                if (c == '{') {
+                    value.addChar(Brackets.findEnd(input, c));
+                }
+                if (c == '"' || c == "'") {
+                    value.addChar(c);
+                    readString(input, c, parser, value);
+                }
+                if (c == '}') {
+                    break;
+                }
+                value.addChar(c);
+                last = c;
+            }
+
+            return value;
+        }
+
+        function parseTagName(/*InputStream*/ input) {
+            var c, last = '', name="";
+            while (c=input.read()) {
+                if (isSpecialSymbol(last, c)) {
+                    throw "Tag name with symbols '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'";
+                }
+                if (c==">") {
+                    input.setRelative(-1);
+                    return name;
+                }
+                if (c>='!') {
+                    name+=c;
+                    last = c;
+                } else if (name) {
+                    break;
+                }
+            }
+            return name.toLowerCase();
+        }
+
+        function parseTagWithAttributes(/*InputStream*/ input, /*HtmlParser*/ parser, /*ConsoleStack*/ cs) {
+            parser.parsingTag();
+            try {
+                var c, last;
+                var /*String*/ tagName = parseTagName(input);
+
+                //noinspection JSValidateTypes
+                var /*Map*/ attributes = new Map();
+
+                while (true) {
+                    //find next parameter ignoring white spaces
+                    last = '';
+                    while (c = input.read()) {
+                        if (c>='!') break;
+                    }
+
+                    var /*String*/ name = "";
+                    if (c != '>') {
+                        name+=c;
+                        var notOK = input.getPosition();
+                        //parse attribute name
+                        while (c = input.read()) {
+                            if (isSpecialSymbol(last, c)) {
+                                if (cs) cs.addError("Symbol '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'");
+                                return null;
+                            }
+                            if (c=="=" || c == ">") {
+                                notOK = false;
+                                break;
+                            }
+                            if (c>='!') {
+                                name+=c;
+                                last = c;
+                            } else {
+                                while (c && c < '!') {
+                                    last = c;
+                                    c = input.read();
+                                    if (c != '=' || c != '>') {
+                                        input.setRelative(-1);
+                                        break;
+                                    }
+                                }
+                                notOK = false;
+                                break;
+                            }
+                        }
+                        if (notOK) {
+                            if (cs) cs.addError("Can't find end of attribute in '"+input.errorAt(notOK)+"'");
+                            return null;
+                        }
+                    } else {
+                        break;
+                    }
+
+                    var /*ParsedText*/ value = null;
+                    if (c == "=") {
+                        //noinspection JSValidateTypes
+                        notOK = input.getPosition();
+                        //parse attribute value
+                        var type = '';
+                        last = c;
+                        while (c=input.read()) {
+                            if (c>='!') break
+                        }
+                        if (c=='"' || c=="'") {
+                            last = type = c;
+                            c = input.read();
+                        }
+                        value = new ParsedText();
+                        if (c != type && c!='>') {
+                            value.addChar(c);
+                            last = c;
+                            while (c = input.read()) {
+                                if (isSpecialSymbol(last, c)) {
+                                    parser.parsingSpecial(last);
+                                    value.removeLastChar();
+                                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                                    last = '';
+                                    c = input.read();
+                                }
+                                if (type == '') {
+                                    if (c == ">") {
+                                        notOK = false;
+                                        input.setRelative(-1);
+                                        break;
+                                    }
+                                    if (c < '!') {
+                                        notOK = false;
+                                        break;
+                                    }
+                                } else {
+                                    if (c == type) {
+                                        notOK = false;
+                                        break;
+                                    } else if (c=='>') {
+                                        if (cs) cs.addWarning("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                        notOK = false;
+                                        break;
+                                    }
+                                }
+                                value.addChar(c);
+                                last = c;
+                            }
+                            if (notOK) {
+                                if (cs) cs.addError("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                return null;
+                            }
+                        } else {
+                            value.addChar("");
+                        }
+                    }
+
+                    if (name!="/" || value !== null) attributes.put(name, value);
+                    if (c=='>') {
+                        break;
+                    }
+                }
+                parser.parseTag(tagName, attributes);
+                return tagName;
+            } catch (e) {
+                if (cs) cs.addError(e);
+            }
+            return null;
+        }
+
+        return {
+            parseTagWithAttributes: parseTagWithAttributes,
+            isSpecialSymbol: isSpecialSymbol,
+            readSpecialTag: readSpecialTag,
+            author: "Lubos Strapko (https://github.com/lubino)"
+        };
+    }
+
+)
+;
 define('compiler/JSFunctions',['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/Brackets'],function (Map, ConsoleStack, Strings, Brackets) {
 
     var /*String[]*/ KEYWORDS = ["parameters", "instance", "static", "component", "document", "window", "event"];
@@ -4260,32 +4293,94 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
-require(['compiler/Build', 'compiler/ConsoleStack'], function (compile, ConsoleStack) {
-    //Execute the build
-    require(['env!env/args', 'env!env/file', 'env!env/print'], function (params, file, print) {
-        function log(a, b) {
-            var message = "";
-            for (var i = 0; i < arguments.length; i++) {
-                if (message) message += ' ';
-                switch (typeof arguments[i]) {
-                    case "undefined":
-                        message += "undefined";
-                        break;
-                    case "object":
-                        message += arguments[i] ? JSON.stringify(arguments[i]) : "null";
-                        break;
-                    default:
-                        message += arguments[i];
-                        break;
-                }
+define('webjs-express',['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, Build) {
+
+    var fs = require('fs');
+
+    function propertyFileLocale(fileWithoutExtension, length, fileName) {
+        if (fileName.substr(0, length)==fileWithoutExtension) {
+            var ext = fileName.lastIndexOf('.');
+            if (ext>length && fileName.substr(ext)==".properties") {
+                return fileName.substr(length+1, ext-length-2);
             }
-            print(message);
         }
-        var logger = {log: log};
-        var cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger);
-        compile.build(params, cs, file, print);
-    });
+        return null;
+    }
+
+    function middleware(configuration) {
+        var rootDir = "", logger, cs, doStaticLoad = true;
+        if (configuration) {
+            if (configuration.baseDir) rootDir = configuration.baseDir;
+            if (configuration.logger) logger = configuration.logger;
+        }
+        if (!logger) logger = {log: function (a, b) {
+            console.log(a, b)
+        }};
+        cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger);
+        function expressUseCallBack(req, res, next) {
+            var path = req.path, length;
+            if ((length = path.length) > 3 && path.substr(length - 3, 3) == ".js") {
+                var jsFile = rootDir + path;
+                fs.exists(jsFile, function (exists) {
+                    if (exists) {
+                        if (doStaticLoad) {
+                            fs.readFile(jsFile, function (err, data) {
+                                if (err) {
+                                    //todo log error
+                                    next();
+                                } else {
+                                    res.set('Content-Type', 'text/javascript');
+                                    res.send(data);
+                                }
+                            });
+                        } else next();
+                    } else {
+                        var fileWithoutExtension = rootDir + path.substr(0, length - 2);
+                        fs.exists(fileWithoutExtension + "html", function (exists) {
+                            if (exists) {
+                                res.set('Content-Type', 'text/javascript');
+                                //TODO Compile HTML component
+                                res.send("... HTML");
+                            } else {
+                                var hasSlash = fileWithoutExtension.lastIndexOf('/'),
+                                    filePath = hasSlash>0 ? fileWithoutExtension.substr(0, hasSlash) : "",
+                                    fileName = hasSlash>=0 ? fileWithoutExtension.substr(hasSlash+1) : fileWithoutExtension;
+                                fs.readdir(rootDir+filePath, function (err, files) {
+                                    if (err) {
+                                        //todo log error
+                                        next();
+                                    } else {
+                                        var filesCount = files.length, fileNameLength = fileName.length, result;
+                                        files.forEach(function (file) {
+                                            var locale = propertyFileLocale(fileName, fileNameLength, file);
+                                            if (locale) {
+                                                //TODO Compile Properties component
+                                                result = "... Properties";
+                                            }
+                                            if (filesCount--==1) {
+                                                if (result) {
+                                                    res.set('Content-Type', 'text/javascript');
+                                                    res.send(result);
+                                                } else {
+                                                    next();
+                                                }
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            } else next();
+        }
+
+        return expressUseCallBack;
+    }
+
+    return {
+        middleware: middleware
+    }
 });
 
-
-define("WebBuild.js", function(){});
+module.exports = requirejs('webjs-express');
