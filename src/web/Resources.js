@@ -12,7 +12,7 @@ define(['web/accessor'], function (accessor) {
         return moduleData;
     }
 
-    function replaceWith(localizedModule, /*String*/ s, /*Object*/parameters) {
+    function replaceWith(/*Object*/parameters, /*String*/ s, localizedModule) {
         var i = 0;
         while ((i= s.indexOf("${", i)+2)>1) {
             var end = s.indexOf("}", i)+1;
@@ -20,7 +20,7 @@ define(['web/accessor'], function (accessor) {
                 var key = s.substr(i, end - i - 1);
                 var value = accessor.getValue(parameters, key);
                 if (typeof value == "function") value = value();
-                else if (value == null) value = localizedModule[key];
+                else if (value == null) value = localizedModule ? localizedModule[key] : null;
                 if (!value) value = "";
                 s = s.substr(0,i-2)+ value + (end<s.length ? s.substr(end) : "");
             }
@@ -31,7 +31,7 @@ define(['web/accessor'], function (accessor) {
     function resource(moduleName, moduleData, key, parameters) {
         var localizedModule = moduleData[actualLocale];
         var resourceValue = localizedModule ? localizedModule[key] : null;
-        return typeof(resourceValue) === "string" ? parameters ? replaceWith(localizedModule, resourceValue, parameters) : resourceValue : moduleName+'_'+actualLocale+'.'+key;
+        return typeof(resourceValue) === "string" ? parameters ? replaceWith(parameters, resourceValue, localizedModule) : resourceValue : moduleName+'_'+actualLocale+'.'+key;
     }
 
     /**
@@ -165,6 +165,7 @@ define(['web/accessor'], function (accessor) {
         getterFor: getterFor,
         setLocale: setLocale,
         getLocale: getLocale,
+        replaceWith: replaceWith,
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
