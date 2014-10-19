@@ -1,108 +1,38 @@
-var cache = {}, definitions = {};
+var requirejs, define;
+(function (cache) {
 
-
-//loads module from cache or execute "define" function to get module
-function reqModule(moduleDependenciesArray, callBackFunc) {
-    var values = [], i = 0, module;
-    while (i < moduleDependenciesArray.length) {
-        //if module is not cached already, run the definition callBackFunc and cache it
-        if (!cache[module = moduleDependenciesArray[i++]]) cache[module] = [reqModule(definitions[module][0], definitions[module][1])];
-
-        //add next argument for calling callBackFunc
-        values.push(cache[module][0]);
-    }
-
-    //call the
-    return callBackFunc.apply(null, values);
-}
-
-function pipe(a) {
-    return a
-}
-
-//minimalistic function for "requirejs"
-function requirejs(moduleDependenciesArray, callBackFunc) {
-    return reqModule(typeof moduleDependenciesArray == 'string' ? [moduleDependenciesArray] : moduleDependenciesArray, callBackFunc ? callBackFunc : pipe);
-}
-
-//minimalistic function for "define"
-function define(name, moduleDependenciesArray, callBackFunc) {
-    definitions[name] = [moduleDependenciesArray, callBackFunc]
-}
-
-
-
-define('compiler/Map',[],function () {
-
-    /**
-     * Map
-     * @constructor Map
-     */
-    function Map() {
-
-        var map = {};
-        var _keys = [];
-        var _values = [];
-
-        function size() {
-            return _keys.length;
-        }
-
-        function keys() {
-            return _keys;
-        }
-
-        function values() {
-            return _values;
-        }
-
-        function containsKey(key) {
-            return typeof map[key] != "undefined";
-        }
-
-        function add(key) {
-            map[key] = _keys.length;
-            _keys.push(key);
-            _values.push(key);
-        }
-
-        function put(key, value) {
-            map[key] = _keys.length;
-            _keys.push(key);
-            _values.push(value);
-        }
-
-        function getValue(key) {
-            var i = map[key];
-            if (typeof i == 'undefined') return null;
-            return _values[i];
-        }
-
-        function remove(key) {
-            var i = map[key];
-            if (typeof i == 'undefined') return null;
-            delete map[key];
-            for (var field in map) {
-                var otherKey = ""+field;
-                if (map[otherKey]>i) map[otherKey]--;
+    //loads module from cache or execute "define" function to get module
+    function reqModule(moduleDependenciesArray, callBackFunc) {
+        var values = [], i = 0, module = 'not defined';
+        try {
+            while (i < moduleDependenciesArray.length) {
+                //add next argument for calling callBackFunc
+                values.push(cache[module=moduleDependenciesArray[i++]]);
             }
-            _keys.splice(i,1);
-            return _values.splice(i,1);
+        } catch (e) {
+            throw {message: "Module '"+module+"' is not loaded, you need to repair your dependencies for MF", error: e, MF: callBackFunc, dependencies: moduleDependenciesArray};
         }
 
-        this.size = size;
-        this.contains = containsKey;
-        this.containsKey = containsKey;
-        this.keys = keys;
-        this.values = values;
-        this.put = put;
-        this.get = getValue;
-        this.add = add;
-        this.remove = remove;
+        //call the
+        return callBackFunc.apply(null, values);
     }
 
-    return Map;
-});
+    function pipe(a) {
+        return a
+    }
+
+    //minimalistic function for "require"
+    requirejs = function (moduleDependenciesArray, callBackFunc) {
+        return reqModule(typeof moduleDependenciesArray == 'string' ? [moduleDependenciesArray] : moduleDependenciesArray, callBackFunc ? callBackFunc : pipe);
+    };
+
+    //minimalistic function for "define"
+    define = function (module, moduleDependenciesArray, callBackFunc) {
+        cache[module] = reqModule(moduleDependenciesArray, callBackFunc);
+    };
+})({});
+
+
 define('compiler/Strings',[], function () {
 
     function replace(s, searchValue, newValue) {
@@ -268,6 +198,476 @@ define('compiler/Strings',[], function () {
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
+define('compiler/Map',[],function () {
+
+    /**
+     * Map
+     * @constructor Map
+     */
+    function Map() {
+
+        var map = {};
+        var _keys = [];
+        var _values = [];
+
+        function size() {
+            return _keys.length;
+        }
+
+        function keys() {
+            return _keys;
+        }
+
+        function values() {
+            return _values;
+        }
+
+        function containsKey(key) {
+            return typeof map[key] != "undefined";
+        }
+
+        function add(key) {
+            map[key] = _keys.length;
+            _keys.push(key);
+            _values.push(key);
+        }
+
+        function put(key, value) {
+            map[key] = _keys.length;
+            _keys.push(key);
+            _values.push(value);
+        }
+
+        function getValue(key) {
+            var i = map[key];
+            if (typeof i == 'undefined') return null;
+            return _values[i];
+        }
+
+        function remove(key) {
+            var i = map[key];
+            if (typeof i == 'undefined') return null;
+            delete map[key];
+            for (var field in map) {
+                var otherKey = ""+field;
+                if (map[otherKey]>i) map[otherKey]--;
+            }
+            _keys.splice(i,1);
+            return _values.splice(i,1);
+        }
+
+        this.size = size;
+        this.contains = containsKey;
+        this.containsKey = containsKey;
+        this.keys = keys;
+        this.values = values;
+        this.put = put;
+        this.get = getValue;
+        this.add = add;
+        this.remove = remove;
+    }
+
+    return Map;
+});
+define('compiler/Brackets',[], function () {
+
+
+    var /*String[]*/ startings = ['{', '[', '('];
+    var /*String[]*/ endings = ['}', ']', ')'];
+
+    function isStarting(c) {
+        return c=='{' || c== '[' || c== '(';
+    }
+    function isEnding(c) {
+        return c=='}' || c== ']' || c== ')';
+    }
+    function endingTo(c) {
+        switch (c) {
+            case '{': return '}';
+            case '[': return ']';
+            case '(': return ')';
+        }
+        return null;
+    }
+
+    function Brackets(/*String 1*/ starting, /*String 1*/ ending, /*int*/ start, /*int*/ end, /*int[]*/ comas) {
+        this.starting = starting;
+        this.ending = ending;
+        this.start = start;
+        this.end = end;
+        this.comas = comas;
+    }
+
+    function findEndingBracket(/*String*/ js, /*int*/ start, starting, ending) {
+        var /*int*/ i = start;
+        var /*int*/ count = 1;
+        var /*int*/ end = js.length;
+        while (i++ < end) {
+            var c = js.charAt(i);
+            if (c==starting) {
+                count++;
+            } else if (c==ending) {
+                count--;
+                if (count==0) return i;
+            }
+        }
+        return -1;
+    }
+
+
+    function _findEndingBracket(/*String*/ js, /*int*/ start, /*int*/ end) {
+        var /*int*/ i = start;
+        var /*int*/ count = 1;
+        var /*Array*/ result = null;
+
+        while (i++ < end) {
+            var c = js.charAt(i);
+            if (isStarting(c)) {
+                count++;
+            } else if (isEnding(c)) {
+                count--;
+                if (count==0) {
+                    //TODO wrong bracket if (c != ending) throw RuntimeException();
+                    return new Bracket(i, result);
+                }
+            } else if (c==',' && count == 1) {
+                if (!result) result = [];
+                result.push(i);
+            }
+        }
+        return new Bracket(-1, null);
+    }
+
+    function _findEndingBracketInput(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        var /*String[]*/ level = [endingTo(type)];
+        var length = level.length;
+        var /*Array*/ result = null;
+        var lastType = '';
+        var c;
+
+        while (c = input.read()) {
+            if (isStarting(c)) {
+                lastType = endingTo(c);
+                level.push(lastType);
+            } else if (c == lastType) {
+                level.pop();
+                length = level.length;
+                if (length==0) {
+                    return new Bracket(input.getPosition(), result);
+                }
+                lastType = level[length-1];
+            } else if (c==',' && length == 1) {
+                if (!result) result = [];
+                result.push(input.getPosition());
+            }
+        }
+        throw "Can't find ending bracket to '"+input.errorAt(start)+"'";
+    }
+
+    function Bracket(/*int*/ end, /*Array*/ result) {
+        this.end = end; //index of bracket
+        var comas; // indexes of comas
+
+        if (result) {
+            var /*int*/ size = result.length;
+            if (size > 0) {
+                comas = [];
+                for (var i = 0;i< result.length;i++) {
+                    comas.push(result[i]);
+                }
+                comas[size] = end;
+            }
+        }
+        this.comas = comas;
+    }
+
+    /**
+     * Find brackets in js
+     * @param js the JavaScript resource
+     * @param start index of first letter of script
+     * @param end index of last letter of script
+     * @return
+     */
+    function findFirst(/*String*/ js, /*int*/ start, /*int*/ end) {
+        var /*int*/ firstIndex = end;
+        var /*int*/ first = -1;
+        for (var i = 0; i < startings.length; i++) {
+            var /*int*/ p = js.indexOf(startings[i], start);
+            if (p<firstIndex && p>=0) {
+                firstIndex = p;
+                first = i;
+            }
+        }
+        if (first>=0) {
+            var starting = startings[first];
+            var ending = endings[first];
+            var endingBracket = _findEndingBracket(js, firstIndex, end);
+            return new Brackets(starting, ending, firstIndex, endingBracket.end, endingBracket.comas);
+        }
+        return  null;
+    }
+
+    /**
+     * finds ending bracket of typy 'type'
+     * @param input
+     * @param type
+     */
+    function findEnd(/*InputStream*/ input, type) {
+        var start = input.getPosition();
+        return type+input.cutString(start, _findEndingBracketInput(input, type).end);
+    }
+
+    Brackets.findEndingBracket = findEndingBracket;
+    Brackets.findFirst = findFirst;
+    Brackets.findEnd = findEnd;
+
+    return Brackets;
+});
+define('compiler/ParsedText',['compiler/Strings'], function () {
+    function ParsedText() {
+
+
+        var content = [];
+        var lastIsString = false;
+
+        this.$c = content;
+        this.empty = function () {
+            return content.length == 0;
+        };
+        this.clear = function () {
+            lastIsString = false;
+            this.$c = content = [];
+        };
+        this.addSpecial = function (special) {
+            lastIsString = false;
+            content.push(special);
+        };
+        this.removeLastChar = function () {
+            if (lastIsString) {
+                var l = content.length - 1;
+                content[l] = content[l].substr(0, content[l].length-1);
+            }
+        };
+        this.addChar = function (c) {
+            if (!lastIsString) {
+                lastIsString = true;
+                content.push(c);
+            } else {
+                var l = content.length - 1;
+                content[l] = content[l]+c;
+            }
+        };
+    }
+    return ParsedText;
+});
+define('compiler/Tag',['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (Map, Brackets, ParsedText) {
+
+        function isSpecialSymbol(c, after) {
+            return after == '{' && (c == '@' || c == '$');
+        }
+
+        function readString(/*InputStream*/ input, /*String*/ type, /*HtmlParser*/ parser, /*ParsedText*/ value) {
+            var c, last='', i = input.getPosition();
+            while ((c=input.read())) {
+                if (c==type) {
+                    return;
+                }
+                if (isSpecialSymbol(last, c)) {
+                    value.removeLastChar();
+                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                } else {
+                    value.addChar(c);
+                    last = c;
+                }
+            }
+            throw "Can't find end of string from '"+input.errorAt(i)+"'";
+        }
+
+        function readSpecialTag(/*InputStream*/ input, /*HtmlParser*/ parser) {
+            var c, last = '';
+
+            //noinspection JSValidateTypes
+            var /*ParsedText*/ value = new ParsedText();
+            while (c = input.read()) {
+                if (isSpecialSymbol(last, c)) {
+                    parser.parsingSpecial(last);
+                    value.removeLastChar();
+                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                    c = input.read();
+                }
+                if (c == '{') {
+                    value.addChar(Brackets.findEnd(input, c));
+                }
+                if (c == '"' || c == "'") {
+                    value.addChar(c);
+                    readString(input, c, parser, value);
+                }
+                if (c == '}') {
+                    break;
+                }
+                value.addChar(c);
+                last = c;
+            }
+
+            return value;
+        }
+
+        function parseTagName(/*InputStream*/ input) {
+            var c, last = '', name="";
+            while (c=input.read()) {
+                if (isSpecialSymbol(last, c)) {
+                    throw "Tag name with symbols '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'";
+                }
+                if (c==">") {
+                    input.setRelative(-1);
+                    return name;
+                }
+                if (c>='!') {
+                    name+=c;
+                    last = c;
+                } else if (name) {
+                    break;
+                }
+            }
+            return name.toLowerCase();
+        }
+
+        function parseTagWithAttributes(/*InputStream*/ input, /*HtmlParser*/ parser, /*ConsoleStack*/ cs) {
+            parser.parsingTag();
+            try {
+                var c, last;
+                var /*String*/ tagName = parseTagName(input);
+
+                //noinspection JSValidateTypes
+                var /*Map*/ attributes = new Map();
+
+                while (true) {
+                    //find next parameter ignoring white spaces
+                    last = '';
+                    while (c = input.read()) {
+                        if (c>='!') break;
+                    }
+
+                    var /*String*/ name = "";
+                    if (c != '>') {
+                        name+=c;
+                        var notOK = input.getPosition();
+                        //parse attribute name
+                        while (c = input.read()) {
+                            if (isSpecialSymbol(last, c)) {
+                                if (cs) cs.addError("Symbol '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'");
+                                return null;
+                            }
+                            if (c=="=" || c == ">") {
+                                notOK = false;
+                                break;
+                            }
+                            if (c>='!') {
+                                name+=c;
+                                last = c;
+                            } else {
+                                while (c && c < '!') {
+                                    last = c;
+                                    c = input.read();
+                                    if (c != '=' || c != '>') {
+                                        input.setRelative(-1);
+                                        break;
+                                    }
+                                }
+                                notOK = false;
+                                break;
+                            }
+                        }
+                        if (notOK) {
+                            if (cs) cs.addError("Can't find end of attribute in '"+input.errorAt(notOK)+"'");
+                            return null;
+                        }
+                    } else {
+                        break;
+                    }
+
+                    var /*ParsedText*/ value = null;
+                    if (c == "=") {
+                        //noinspection JSValidateTypes
+                        notOK = input.getPosition();
+                        //parse attribute value
+                        var type = '';
+                        last = c;
+                        while (c=input.read()) {
+                            if (c>='!') break
+                        }
+                        if (c=='"' || c=="'") {
+                            last = type = c;
+                            c = input.read();
+                        }
+                        value = new ParsedText();
+                        if (c != type && c!='>') {
+                            value.addChar(c);
+                            last = c;
+                            while (c = input.read()) {
+                                if (isSpecialSymbol(last, c)) {
+                                    parser.parsingSpecial(last);
+                                    value.removeLastChar();
+                                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
+                                    last = '';
+                                    c = input.read();
+                                }
+                                if (type == '') {
+                                    if (c == ">") {
+                                        notOK = false;
+                                        input.setRelative(-1);
+                                        break;
+                                    }
+                                    if (c < '!') {
+                                        notOK = false;
+                                        break;
+                                    }
+                                } else {
+                                    if (c == type) {
+                                        notOK = false;
+                                        break;
+                                    } else if (c=='>') {
+                                        if (cs) cs.addWarning("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                        notOK = false;
+                                        break;
+                                    }
+                                }
+                                value.addChar(c);
+                                last = c;
+                            }
+                            if (notOK) {
+                                if (cs) cs.addError("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
+                                return null;
+                            }
+                        } else {
+                            value.addChar("");
+                        }
+                    }
+
+                    if (name!="/" || value !== null) attributes.put(name, value);
+                    if (c=='>') {
+                        break;
+                    }
+                }
+                parser.parseTag(tagName, attributes);
+                return tagName;
+            } catch (e) {
+                if (cs) cs.addError(e);
+            }
+            return null;
+        }
+
+        return {
+            parseTagWithAttributes: parseTagWithAttributes,
+            isSpecialSymbol: isSpecialSymbol,
+            readSpecialTag: readSpecialTag,
+            author: "Lubos Strapko (https://github.com/lubino)"
+        };
+    }
+
+)
+;
 define('compiler/MetaFunction',[],function () {
 
     function MetaFunction(/*String*/ name, /*String[]*/ parameters, /*String*/ body, /*String*/ description, /*String[]*/ parametersDescription, /*String*/ returns) {
@@ -744,405 +1144,6 @@ define('compiler/ConsoleStack',['compiler/Map', 'compiler/Strings', 'compiler/Me
 
     return ConsoleStack;
 });
-define('compiler/Brackets',[], function () {
-
-
-    var /*String[]*/ startings = ['{', '[', '('];
-    var /*String[]*/ endings = ['}', ']', ')'];
-
-    function isStarting(c) {
-        return c=='{' || c== '[' || c== '(';
-    }
-    function isEnding(c) {
-        return c=='}' || c== ']' || c== ')';
-    }
-    function endingTo(c) {
-        switch (c) {
-            case '{': return '}';
-            case '[': return ']';
-            case '(': return ')';
-        }
-        return null;
-    }
-
-    function Brackets(/*String 1*/ starting, /*String 1*/ ending, /*int*/ start, /*int*/ end, /*int[]*/ comas) {
-        this.starting = starting;
-        this.ending = ending;
-        this.start = start;
-        this.end = end;
-        this.comas = comas;
-    }
-
-    function findEndingBracket(/*String*/ js, /*int*/ start, starting, ending) {
-        var /*int*/ i = start;
-        var /*int*/ count = 1;
-        var /*int*/ end = js.length;
-        while (i++ < end) {
-            var c = js.charAt(i);
-            if (c==starting) {
-                count++;
-            } else if (c==ending) {
-                count--;
-                if (count==0) return i;
-            }
-        }
-        return -1;
-    }
-
-
-    function _findEndingBracket(/*String*/ js, /*int*/ start, /*int*/ end) {
-        var /*int*/ i = start;
-        var /*int*/ count = 1;
-        var /*Array*/ result = null;
-
-        while (i++ < end) {
-            var c = js.charAt(i);
-            if (isStarting(c)) {
-                count++;
-            } else if (isEnding(c)) {
-                count--;
-                if (count==0) {
-                    //TODO wrong bracket if (c != ending) throw RuntimeException();
-                    return new Bracket(i, result);
-                }
-            } else if (c==',' && count == 1) {
-                if (!result) result = [];
-                result.push(i);
-            }
-        }
-        return new Bracket(-1, null);
-    }
-
-    function _findEndingBracketInput(/*InputStream*/ input, type) {
-        var start = input.getPosition();
-        var /*String[]*/ level = [endingTo(type)];
-        var length = level.length;
-        var /*Array*/ result = null;
-        var lastType = '';
-        var c;
-
-        while (c = input.read()) {
-            if (isStarting(c)) {
-                lastType = endingTo(c);
-                level.push(lastType);
-            } else if (c == lastType) {
-                level.pop();
-                length = level.length;
-                if (length==0) {
-                    return new Bracket(input.getPosition(), result);
-                }
-                lastType = level[length-1];
-            } else if (c==',' && length == 1) {
-                if (!result) result = [];
-                result.push(input.getPosition());
-            }
-        }
-        throw "Can't find ending bracket to '"+input.errorAt(start)+"'";
-    }
-
-    function Bracket(/*int*/ end, /*Array*/ result) {
-        this.end = end; //index of bracket
-        var comas; // indexes of comas
-
-        if (result) {
-            var /*int*/ size = result.length;
-            if (size > 0) {
-                comas = [];
-                for (var i = 0;i< result.length;i++) {
-                    comas.push(result[i]);
-                }
-                comas[size] = end;
-            }
-        }
-        this.comas = comas;
-    }
-
-    /**
-     * Find brackets in js
-     * @param js the JavaScript resource
-     * @param start index of first letter of script
-     * @param end index of last letter of script
-     * @return
-     */
-    function findFirst(/*String*/ js, /*int*/ start, /*int*/ end) {
-        var /*int*/ firstIndex = end;
-        var /*int*/ first = -1;
-        for (var i = 0; i < startings.length; i++) {
-            var /*int*/ p = js.indexOf(startings[i], start);
-            if (p<firstIndex && p>=0) {
-                firstIndex = p;
-                first = i;
-            }
-        }
-        if (first>=0) {
-            var starting = startings[first];
-            var ending = endings[first];
-            var endingBracket = _findEndingBracket(js, firstIndex, end);
-            return new Brackets(starting, ending, firstIndex, endingBracket.end, endingBracket.comas);
-        }
-        return  null;
-    }
-
-    /**
-     * finds ending bracket of typy 'type'
-     * @param input
-     * @param type
-     */
-    function findEnd(/*InputStream*/ input, type) {
-        var start = input.getPosition();
-        return type+input.cutString(start, _findEndingBracketInput(input, type).end);
-    }
-
-    Brackets.findEndingBracket = findEndingBracket;
-    Brackets.findFirst = findFirst;
-    Brackets.findEnd = findEnd;
-
-    return Brackets;
-});
-define('compiler/ParsedText',['compiler/Strings'], function () {
-    function ParsedText() {
-
-
-        var content = [];
-        var lastIsString = false;
-
-        this.$c = content;
-        this.empty = function () {
-            return content.length == 0;
-        };
-        this.clear = function () {
-            lastIsString = false;
-            this.$c = content = [];
-        };
-        this.addSpecial = function (special) {
-            lastIsString = false;
-            content.push(special);
-        };
-        this.removeLastChar = function () {
-            if (lastIsString) {
-                var l = content.length - 1;
-                content[l] = content[l].substr(0, content[l].length-1);
-            }
-        };
-        this.addChar = function (c) {
-            if (!lastIsString) {
-                lastIsString = true;
-                content.push(c);
-            } else {
-                var l = content.length - 1;
-                content[l] = content[l]+c;
-            }
-        };
-    }
-    return ParsedText;
-});
-define('compiler/Tag',['compiler/Map', 'compiler/Brackets', 'compiler/ParsedText'], function (Map, Brackets, ParsedText) {
-
-        function isSpecialSymbol(c, after) {
-            return after == '{' && (c == '@' || c == '$');
-        }
-
-        function readString(/*InputStream*/ input, /*String*/ type, /*HtmlParser*/ parser, /*ParsedText*/ value) {
-            var c, last='', i = input.getPosition();
-            while ((c=input.read())) {
-                if (c==type) {
-                    return;
-                }
-                if (isSpecialSymbol(last, c)) {
-                    value.removeLastChar();
-                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                } else {
-                    value.addChar(c);
-                    last = c;
-                }
-            }
-            throw "Can't find end of string from '"+input.errorAt(i)+"'";
-        }
-
-        function readSpecialTag(/*InputStream*/ input, /*HtmlParser*/ parser) {
-            var c, last = '';
-
-            //noinspection JSValidateTypes
-            var /*ParsedText*/ value = new ParsedText();
-            while (c = input.read()) {
-                if (isSpecialSymbol(last, c)) {
-                    parser.parsingSpecial(last);
-                    value.removeLastChar();
-                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                    c = input.read();
-                }
-                if (c == '{') {
-                    value.addChar(Brackets.findEnd(input, c));
-                }
-                if (c == '"' || c == "'") {
-                    value.addChar(c);
-                    readString(input, c, parser, value);
-                }
-                if (c == '}') {
-                    break;
-                }
-                value.addChar(c);
-                last = c;
-            }
-
-            return value;
-        }
-
-        function parseTagName(/*InputStream*/ input) {
-            var c, last = '', name="";
-            while (c=input.read()) {
-                if (isSpecialSymbol(last, c)) {
-                    throw "Tag name with symbols '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'";
-                }
-                if (c==">") {
-                    input.setRelative(-1);
-                    return name;
-                }
-                if (c>='!') {
-                    name+=c;
-                    last = c;
-                } else if (name) {
-                    break;
-                }
-            }
-            return name.toLowerCase();
-        }
-
-        function parseTagWithAttributes(/*InputStream*/ input, /*HtmlParser*/ parser, /*ConsoleStack*/ cs) {
-            parser.parsingTag();
-            try {
-                var c, last;
-                var /*String*/ tagName = parseTagName(input);
-
-                //noinspection JSValidateTypes
-                var /*Map*/ attributes = new Map();
-
-                while (true) {
-                    //find next parameter ignoring white spaces
-                    last = '';
-                    while (c = input.read()) {
-                        if (c>='!') break;
-                    }
-
-                    var /*String*/ name = "";
-                    if (c != '>') {
-                        name+=c;
-                        var notOK = input.getPosition();
-                        //parse attribute name
-                        while (c = input.read()) {
-                            if (isSpecialSymbol(last, c)) {
-                                if (cs) cs.addError("Symbol '"+last+c+"' is not allowed in '"+input.errorAt(input.getPosition()-1)+"'");
-                                return null;
-                            }
-                            if (c=="=" || c == ">") {
-                                notOK = false;
-                                break;
-                            }
-                            if (c>='!') {
-                                name+=c;
-                                last = c;
-                            } else {
-                                while (c && c < '!') {
-                                    last = c;
-                                    c = input.read();
-                                    if (c != '=' || c != '>') {
-                                        input.setRelative(-1);
-                                        break;
-                                    }
-                                }
-                                notOK = false;
-                                break;
-                            }
-                        }
-                        if (notOK) {
-                            if (cs) cs.addError("Can't find end of attribute in '"+input.errorAt(notOK)+"'");
-                            return null;
-                        }
-                    } else {
-                        break;
-                    }
-
-                    var /*ParsedText*/ value = null;
-                    if (c == "=") {
-                        //noinspection JSValidateTypes
-                        notOK = input.getPosition();
-                        //parse attribute value
-                        var type = '';
-                        last = c;
-                        while (c=input.read()) {
-                            if (c>='!') break
-                        }
-                        if (c=='"' || c=="'") {
-                            last = type = c;
-                            c = input.read();
-                        }
-                        value = new ParsedText();
-                        if (c != type && c!='>') {
-                            value.addChar(c);
-                            last = c;
-                            while (c = input.read()) {
-                                if (isSpecialSymbol(last, c)) {
-                                    parser.parsingSpecial(last);
-                                    value.removeLastChar();
-                                    value.addSpecial(parser.parseSpecial(readSpecialTag(input, parser), last));
-                                    last = '';
-                                    c = input.read();
-                                }
-                                if (type == '') {
-                                    if (c == ">") {
-                                        notOK = false;
-                                        input.setRelative(-1);
-                                        break;
-                                    }
-                                    if (c < '!') {
-                                        notOK = false;
-                                        break;
-                                    }
-                                } else {
-                                    if (c == type) {
-                                        notOK = false;
-                                        break;
-                                    } else if (c=='>') {
-                                        if (cs) cs.addWarning("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
-                                        notOK = false;
-                                        break;
-                                    }
-                                }
-                                value.addChar(c);
-                                last = c;
-                            }
-                            if (notOK) {
-                                if (cs) cs.addError("Can't find end of attribute value in '" + input.errorAt(notOK) + "'");
-                                return null;
-                            }
-                        } else {
-                            value.addChar("");
-                        }
-                    }
-
-                    if (name!="/" || value !== null) attributes.put(name, value);
-                    if (c=='>') {
-                        break;
-                    }
-                }
-                parser.parseTag(tagName, attributes);
-                return tagName;
-            } catch (e) {
-                if (cs) cs.addError(e);
-            }
-            return null;
-        }
-
-        return {
-            parseTagWithAttributes: parseTagWithAttributes,
-            isSpecialSymbol: isSpecialSymbol,
-            readSpecialTag: readSpecialTag,
-            author: "Lubos Strapko (https://github.com/lubino)"
-        };
-    }
-
-)
-;
 define('compiler/JSFunctions',['compiler/Map', 'compiler/ConsoleStack', 'compiler/Strings', 'compiler/Brackets'],function (Map, ConsoleStack, Strings, Brackets) {
 
     var /*String[]*/ KEYWORDS = ["parameters", "instance", "static", "component", "document", "window", "event"];
@@ -4328,120 +4329,124 @@ define('compiler/Build',['compiler/HtmlParser', 'compiler/PropertiesParser', 'co
         author: "Lubos Strapko (https://github.com/lubino)"
     };
 });
-define('webjs-express',['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, compile) {
+define('webjs-express',['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/ConsoleStack', 'compiler/Map', 'compiler/InputStream', 'compiler/DependenciesMapper'], function (compile, HtmlParser, PropertiesParser, ConsoleStack, Map, InputStream, DependenciesMapper) {
+    var runParameters = compile.defaultConfig(),
+        staticJsFiles = {
+            /*staticJsFiles*/
+            "/require.js": "/*\n RequireJS 2.1.15 Copyright (c) 2010-2014, The Dojo Foundation All Rights Reserved.\n Available via the MIT or new BSD license.\n see: http://github.com/jrburke/requirejs for details\n*/\nvar requirejs,require,define;(function(ba){function G(b){return\"[object Function]\"===K.call(b)}function H(b){return\"[object Array]\"===K.call(b)}function v(b,c){if(b){var d;for(d=0;d<b.length&&(!b[d]||!c(b[d],d,b));d+=1);}}function T(b,c){if(b){var d;for(d=b.length-1;-1<d&&(!b[d]||!c(b[d],d,b));d-=1);}}function t(b,c){return fa.call(b,c)}function m(b,c){return t(b,c)&&b[c]}function B(b,c){for(var d in b)if(t(b,d)&&c(b[d],d))break}function U(b,c,d,e){c&&B(c,function(c,g){if(d||!t(b,g))e&&\"object\"===typeof c&&c&&!H(c)&&!G(c)&&!(c instanceof RegExp)?(b[g]||(b[g]={}),U(b[g],c,d,e)):b[g]=c});return b}function u(b,c){return function(){return c.apply(b,arguments)}}function ca(b){throw b;}function da(b){if(!b)return b;var c=ba;v(b.split(\".\"),function(b){c=c[b]});return c}function C(b,c,d,e){c=Error(c+\"\\nhttp://requirejs.org/docs/errors.html#\"+b);c.requireType=b;c.requireModules=e;d&&(c.originalError=d);return c}function ga(b){function c(a,k,b){var f,l,c,d,e,g,i,p,k=k&&k.split(\"/\"),h=j.map,n=h&&h[\"*\"];if(a){a=a.split(\"/\");l=a.length-1;j.nodeIdCompat&& Q.test(a[l])&&(a[l]=a[l].replace(Q,\"\"));\".\"===a[0].charAt(0)&&k&&(l=k.slice(0,k.length-1),a=l.concat(a));l=a;for(c=0;c<l.length;c++)if(d=l[c],\".\"===d)l.splice(c,1),c-=1;else if(\"..\"===d&&!(0===c||1==c&&\"..\"===l[2]||\"..\"===l[c-1])&&0<c)l.splice(c-1,2),c-=2;a=a.join(\"/\")}if(b&&h&&(k||n)){l=a.split(\"/\");c=l.length;a:for(;0<c;c-=1){e=l.slice(0,c).join(\"/\");if(k)for(d=k.length;0<d;d-=1)if(b=m(h,k.slice(0,d).join(\"/\")))if(b=m(b,e)){f=b;g=c;break a}!i&&(n&&m(n,e))&&(i=m(n,e),p=c)}!f&&i&&(f=i,g=p);f&&(l.splice(0, g,f),a=l.join(\"/\"))}return(f=m(j.pkgs,a))?f:a}function d(a){z&&v(document.getElementsByTagName(\"script\"),function(k){if(k.getAttribute(\"data-requiremodule\")===a&&k.getAttribute(\"data-requirecontext\")===i.contextName)return k.parentNode.removeChild(k),!0})}function e(a){var k=m(j.paths,a);if(k&&H(k)&&1<k.length)return k.shift(),i.require.undef(a),i.makeRequire(null,{skipMap:!0})([a]),!0}function n(a){var k,c=a?a.indexOf(\"!\"):-1;-1<c&&(k=a.substring(0,c),a=a.substring(c+1,a.length));return[k,a]}function p(a, k,b,f){var l,d,e=null,g=k?k.name:null,j=a,p=!0,h=\"\";a||(p=!1,a=\"_@r\"+(K+=1));a=n(a);e=a[0];a=a[1];e&&(e=c(e,g,f),d=m(r,e));a&&(e?h=d&&d.normalize?d.normalize(a,function(a){return c(a,g,f)}):-1===a.indexOf(\"!\")?c(a,g,f):a:(h=c(a,g,f),a=n(h),e=a[0],h=a[1],b=!0,l=i.nameToUrl(h)));b=e&&!d&&!b?\"_unnormalized\"+(O+=1):\"\";return{prefix:e,name:h,parentMap:k,unnormalized:!!b,url:l,originalName:j,isDefine:p,id:(e?e+\"!\"+h:h)+b}}function s(a){var k=a.id,b=m(h,k);b||(b=h[k]=new i.Module(a));return b}function q(a, k,b){var f=a.id,c=m(h,f);if(t(r,f)&&(!c||c.defineEmitComplete))\"defined\"===k&&b(r[f]);else if(c=s(a),c.error&&\"error\"===k)b(c.error);else c.on(k,b)}function w(a,b){var c=a.requireModules,f=!1;if(b)b(a);else if(v(c,function(b){if(b=m(h,b))b.error=a,b.events.error&&(f=!0,b.emit(\"error\",a))}),!f)g.onError(a)}function x(){R.length&&(ha.apply(A,[A.length,0].concat(R)),R=[])}function y(a){delete h[a];delete V[a]}function F(a,b,c){var f=a.map.id;a.error?a.emit(\"error\",a.error):(b[f]=!0,v(a.depMaps,function(f, d){var e=f.id,g=m(h,e);g&&(!a.depMatched[d]&&!c[e])&&(m(b,e)?(a.defineDep(d,r[e]),a.check()):F(g,b,c))}),c[f]=!0)}function D(){var a,b,c=(a=1E3*j.waitSeconds)&&i.startTime+a<(new Date).getTime(),f=[],l=[],g=!1,h=!0;if(!W){W=!0;B(V,function(a){var i=a.map,j=i.id;if(a.enabled&&(i.isDefine||l.push(a),!a.error))if(!a.inited&&c)e(j)?g=b=!0:(f.push(j),d(j));else if(!a.inited&&(a.fetched&&i.isDefine)&&(g=!0,!i.prefix))return h=!1});if(c&&f.length)return a=C(\"timeout\",\"Load timeout for modules: \"+f,null, f),a.contextName=i.contextName,w(a);h&&v(l,function(a){F(a,{},{})});if((!c||b)&&g)if((z||ea)&&!X)X=setTimeout(function(){X=0;D()},50);W=!1}}function E(a){t(r,a[0])||s(p(a[0],null,!0)).init(a[1],a[2])}function I(a){var a=a.currentTarget||a.srcElement,b=i.onScriptLoad;a.detachEvent&&!Y?a.detachEvent(\"onreadystatechange\",b):a.removeEventListener(\"load\",b,!1);b=i.onScriptError;(!a.detachEvent||Y)&&a.removeEventListener(\"error\",b,!1);return{node:a,id:a&&a.getAttribute(\"data-requiremodule\")}}function J(){var a; for(x();A.length;){a=A.shift();if(null===a[0])return w(C(\"mismatch\",\"Mismatched anonymous define() module: \"+a[a.length-1]));E(a)}}var W,Z,i,L,X,j={waitSeconds:7,baseUrl:\"./\",paths:{},bundles:{},pkgs:{},shim:{},config:{}},h={},V={},$={},A=[],r={},S={},aa={},K=1,O=1;L={require:function(a){return a.require?a.require:a.require=i.makeRequire(a.map)},exports:function(a){a.usingExports=!0;if(a.map.isDefine)return a.exports?r[a.map.id]=a.exports:a.exports=r[a.map.id]={}},module:function(a){return a.module? a.module:a.module={id:a.map.id,uri:a.map.url,config:function(){return m(j.config,a.map.id)||{}},exports:a.exports||(a.exports={})}}};Z=function(a){this.events=m($,a.id)||{};this.map=a;this.shim=m(j.shim,a.id);this.depExports=[];this.depMaps=[];this.depMatched=[];this.pluginMaps={};this.depCount=0};Z.prototype={init:function(a,b,c,f){f=f||{};if(!this.inited){this.factory=b;if(c)this.on(\"error\",c);else this.events.error&&(c=u(this,function(a){this.emit(\"error\",a)}));this.depMaps=a&&a.slice(0);this.errback= c;this.inited=!0;this.ignore=f.ignore;f.enabled||this.enabled?this.enable():this.check()}},defineDep:function(a,b){this.depMatched[a]||(this.depMatched[a]=!0,this.depCount-=1,this.depExports[a]=b)},fetch:function(){if(!this.fetched){this.fetched=!0;i.startTime=(new Date).getTime();var a=this.map;if(this.shim)i.makeRequire(this.map,{enableBuildCallback:!0})(this.shim.deps||[],u(this,function(){return a.prefix?this.callPlugin():this.load()}));else return a.prefix?this.callPlugin():this.load()}},load:function(){var a= this.map.url;S[a]||(S[a]=!0,i.load(this.map.id,a))},check:function(){if(this.enabled&&!this.enabling){var a,b,c=this.map.id;b=this.depExports;var f=this.exports,l=this.factory;if(this.inited)if(this.error)this.emit(\"error\",this.error);else{if(!this.defining){this.defining=!0;if(1>this.depCount&&!this.defined){if(G(l)){if(this.events.error&&this.map.isDefine||g.onError!==ca)try{f=i.execCb(c,l,b,f)}catch(d){a=d}else f=i.execCb(c,l,b,f);this.map.isDefine&&void 0===f&&((b=this.module)?f=b.exports:this.usingExports&& (f=this.exports));if(a)return a.requireMap=this.map,a.requireModules=this.map.isDefine?[this.map.id]:null,a.requireType=this.map.isDefine?\"define\":\"require\",w(this.error=a)}else f=l;this.exports=f;if(this.map.isDefine&&!this.ignore&&(r[c]=f,g.onResourceLoad))g.onResourceLoad(i,this.map,this.depMaps);y(c);this.defined=!0}this.defining=!1;this.defined&&!this.defineEmitted&&(this.defineEmitted=!0,this.emit(\"defined\",this.exports),this.defineEmitComplete=!0)}}else this.fetch()}},callPlugin:function(){var a= this.map,b=a.id,d=p(a.prefix);this.depMaps.push(d);q(d,\"defined\",u(this,function(f){var l,d;d=m(aa,this.map.id);var e=this.map.name,P=this.map.parentMap?this.map.parentMap.name:null,n=i.makeRequire(a.parentMap,{enableBuildCallback:!0});if(this.map.unnormalized){if(f.normalize&&(e=f.normalize(e,function(a){return c(a,P,!0)})||\"\"),f=p(a.prefix+\"!\"+e,this.map.parentMap),q(f,\"defined\",u(this,function(a){this.init([],function(){return a},null,{enabled:!0,ignore:!0})})),d=m(h,f.id)){this.depMaps.push(f); if(this.events.error)d.on(\"error\",u(this,function(a){this.emit(\"error\",a)}));d.enable()}}else d?(this.map.url=i.nameToUrl(d),this.load()):(l=u(this,function(a){this.init([],function(){return a},null,{enabled:!0})}),l.error=u(this,function(a){this.inited=!0;this.error=a;a.requireModules=[b];B(h,function(a){0===a.map.id.indexOf(b+\"_unnormalized\")&&y(a.map.id)});w(a)}),l.fromText=u(this,function(f,c){var d=a.name,e=p(d),P=M;c&&(f=c);P&&(M=!1);s(e);t(j.config,b)&&(j.config[d]=j.config[b]);try{g.exec(f)}catch(h){return w(C(\"fromtexteval\", \"fromText eval for \"+b+\" failed: \"+h,h,[b]))}P&&(M=!0);this.depMaps.push(e);i.completeLoad(d);n([d],l)}),f.load(a.name,n,l,j))}));i.enable(d,this);this.pluginMaps[d.id]=d},enable:function(){V[this.map.id]=this;this.enabling=this.enabled=!0;v(this.depMaps,u(this,function(a,b){var c,f;if(\"string\"===typeof a){a=p(a,this.map.isDefine?this.map:this.map.parentMap,!1,!this.skipMap);this.depMaps[b]=a;if(c=m(L,a.id)){this.depExports[b]=c(this);return}this.depCount+=1;q(a,\"defined\",u(this,function(a){this.defineDep(b, a);this.check()}));this.errback&&q(a,\"error\",u(this,this.errback))}c=a.id;f=h[c];!t(L,c)&&(f&&!f.enabled)&&i.enable(a,this)}));B(this.pluginMaps,u(this,function(a){var b=m(h,a.id);b&&!b.enabled&&i.enable(a,this)}));this.enabling=!1;this.check()},on:function(a,b){var c=this.events[a];c||(c=this.events[a]=[]);c.push(b)},emit:function(a,b){v(this.events[a],function(a){a(b)});\"error\"===a&&delete this.events[a]}};i={config:j,contextName:b,registry:h,defined:r,urlFetched:S,defQueue:A,Module:Z,makeModuleMap:p, nextTick:g.nextTick,onError:w,configure:function(a){a.baseUrl&&\"/\"!==a.baseUrl.charAt(a.baseUrl.length-1)&&(a.baseUrl+=\"/\");var b=j.shim,c={paths:!0,bundles:!0,config:!0,map:!0};B(a,function(a,b){c[b]?(j[b]||(j[b]={}),U(j[b],a,!0,!0)):j[b]=a});a.bundles&&B(a.bundles,function(a,b){v(a,function(a){a!==b&&(aa[a]=b)})});a.shim&&(B(a.shim,function(a,c){H(a)&&(a={deps:a});if((a.exports||a.init)&&!a.exportsFn)a.exportsFn=i.makeShimExports(a);b[c]=a}),j.shim=b);a.packages&&v(a.packages,function(a){var b, a=\"string\"===typeof a?{name:a}:a;b=a.name;a.location&&(j.paths[b]=a.location);j.pkgs[b]=a.name+\"/\"+(a.main||\"main\").replace(ia,\"\").replace(Q,\"\")});B(h,function(a,b){!a.inited&&!a.map.unnormalized&&(a.map=p(b))});if(a.deps||a.callback)i.require(a.deps||[],a.callback)},makeShimExports:function(a){return function(){var b;a.init&&(b=a.init.apply(ba,arguments));return b||a.exports&&da(a.exports)}},makeRequire:function(a,e){function j(c,d,m){var n,q;e.enableBuildCallback&&(d&&G(d))&&(d.__requireJsBuild= !0);if(\"string\"===typeof c){if(G(d))return w(C(\"requireargs\",\"Invalid require call\"),m);if(a&&t(L,c))return L[c](h[a.id]);if(g.get)return g.get(i,c,a,j);n=p(c,a,!1,!0);n=n.id;return!t(r,n)?w(C(\"notloaded\",'Module name \"'+n+'\" has not been loaded yet for context: '+b+(a?\"\":\". Use require([])\"))):r[n]}J();i.nextTick(function(){J();q=s(p(null,a));q.skipMap=e.skipMap;q.init(c,d,m,{enabled:!0});D()});return j}e=e||{};U(j,{isBrowser:z,toUrl:function(b){var d,e=b.lastIndexOf(\".\"),k=b.split(\"/\")[0];if(-1!== e&&(!(\".\"===k||\"..\"===k)||1<e))d=b.substring(e,b.length),b=b.substring(0,e);return i.nameToUrl(c(b,a&&a.id,!0),d,!0)},defined:function(b){return t(r,p(b,a,!1,!0).id)},specified:function(b){b=p(b,a,!1,!0).id;return t(r,b)||t(h,b)}});a||(j.undef=function(b){x();var c=p(b,a,!0),e=m(h,b);d(b);delete r[b];delete S[c.url];delete $[b];T(A,function(a,c){a[0]===b&&A.splice(c,1)});e&&(e.events.defined&&($[b]=e.events),y(b))});return j},enable:function(a){m(h,a.id)&&s(a).enable()},completeLoad:function(a){var b, c,d=m(j.shim,a)||{},g=d.exports;for(x();A.length;){c=A.shift();if(null===c[0]){c[0]=a;if(b)break;b=!0}else c[0]===a&&(b=!0);E(c)}c=m(h,a);if(!b&&!t(r,a)&&c&&!c.inited){if(j.enforceDefine&&(!g||!da(g)))return e(a)?void 0:w(C(\"nodefine\",\"No define call for \"+a,null,[a]));E([a,d.deps||[],d.exportsFn])}D()},nameToUrl:function(a,b,c){var d,e,h;(d=m(j.pkgs,a))&&(a=d);if(d=m(aa,a))return i.nameToUrl(d,b,c);if(g.jsExtRegExp.test(a))d=a+(b||\"\");else{d=j.paths;a=a.split(\"/\");for(e=a.length;0<e;e-=1)if(h=a.slice(0, e).join(\"/\"),h=m(d,h)){H(h)&&(h=h[0]);a.splice(0,e,h);break}d=a.join(\"/\");d+=b||(/^data\\:|\\?/.test(d)||c?\"\":\".js\");d=(\"/\"===d.charAt(0)||d.match(/^[\\w\\+\\.\\-]+:/)?\"\":j.baseUrl)+d}return j.urlArgs?d+((-1===d.indexOf(\"?\")?\"?\":\"&\")+j.urlArgs):d},load:function(a,b){g.load(i,a,b)},execCb:function(a,b,c,d){return b.apply(d,c)},onScriptLoad:function(a){if(\"load\"===a.type||ja.test((a.currentTarget||a.srcElement).readyState))N=null,a=I(a),i.completeLoad(a.id)},onScriptError:function(a){var b=I(a);if(!e(b.id))return w(C(\"scripterror\", \"Script error for: \"+b.id,a,[b.id]))}};i.require=i.makeRequire();return i}var g,x,y,D,I,E,N,J,s,O,ka=/(\\/\\*([\\s\\S]*?)\\*\\/|([^:]|^)\\/\\/(.*)$)/mg,la=/[^.]\\s*require\\s*\\(\\s*[\"']([^'\"\\s]+)[\"']\\s*\\)/g,Q=/\\.js$/,ia=/^\\.\\//;x=Object.prototype;var K=x.toString,fa=x.hasOwnProperty,ha=Array.prototype.splice,z=!!(\"undefined\"!==typeof window&&\"undefined\"!==typeof navigator&&window.document),ea=!z&&\"undefined\"!==typeof importScripts,ja=z&&\"PLAYSTATION 3\"===navigator.platform?/^complete$/:/^(complete|loaded)$/, Y=\"undefined\"!==typeof opera&&\"[object Opera]\"===opera.toString(),F={},q={},R=[],M=!1;if(\"undefined\"===typeof define){if(\"undefined\"!==typeof requirejs){if(G(requirejs))return;q=requirejs;requirejs=void 0}\"undefined\"!==typeof require&&!G(require)&&(q=require,require=void 0);g=requirejs=function(b,c,d,e){var n,p=\"_\";!H(b)&&\"string\"!==typeof b&&(n=b,H(c)?(b=c,c=d,d=e):b=[]);n&&n.context&&(p=n.context);(e=m(F,p))||(e=F[p]=g.s.newContext(p));n&&e.configure(n);return e.require(b,c,d)};g.config=function(b){return g(b)}; g.nextTick=\"undefined\"!==typeof setTimeout?function(b){setTimeout(b,4)}:function(b){b()};require||(require=g);g.version=\"2.1.15\";g.jsExtRegExp=/^\\/|:|\\?|\\.js$/;g.isBrowser=z;x=g.s={contexts:F,newContext:ga};g({});v([\"toUrl\",\"undef\",\"defined\",\"specified\"],function(b){g[b]=function(){var c=F._;return c.require[b].apply(c,arguments)}});if(z&&(y=x.head=document.getElementsByTagName(\"head\")[0],D=document.getElementsByTagName(\"base\")[0]))y=x.head=D.parentNode;g.onError=ca;g.createNode=function(b){var c= b.xhtml?document.createElementNS(\"http://www.w3.org/1999/xhtml\",\"html:script\"):document.createElement(\"script\");c.type=b.scriptType||\"text/javascript\";c.charset=\"utf-8\";c.async=!0;return c};g.load=function(b,c,d){var e=b&&b.config||{};if(z)return e=g.createNode(e,c,d),e.setAttribute(\"data-requirecontext\",b.contextName),e.setAttribute(\"data-requiremodule\",c),e.attachEvent&&!(e.attachEvent.toString&&0>e.attachEvent.toString().indexOf(\"[native code\"))&&!Y?(M=!0,e.attachEvent(\"onreadystatechange\",b.onScriptLoad)): (e.addEventListener(\"load\",b.onScriptLoad,!1),e.addEventListener(\"error\",b.onScriptError,!1)),e.src=d,J=e,D?y.insertBefore(e,D):y.appendChild(e),J=null,e;if(ea)try{importScripts(d),b.completeLoad(c)}catch(m){b.onError(C(\"importscripts\",\"importScripts failed for \"+c+\" at \"+d,m,[c]))}};z&&!q.skipDataMain&&T(document.getElementsByTagName(\"script\"),function(b){y||(y=b.parentNode);if(I=b.getAttribute(\"data-main\"))return s=I,q.baseUrl||(E=s.split(\"/\"),s=E.pop(),O=E.length?E.join(\"/\")+\"/\":\"./\",q.baseUrl= O),s=s.replace(Q,\"\"),g.jsExtRegExp.test(s)&&(s=I),q.deps=q.deps?q.deps.concat(s):[s],!0});define=function(b,c,d){var e,g;\"string\"!==typeof b&&(d=c,c=b,b=null);H(c)||(d=c,c=null);!c&&G(d)&&(c=[],d.length&&(d.toString().replace(ka,\"\").replace(la,function(b,d){c.push(d)}),c=(1===d.length?[\"require\"]:[\"require\",\"exports\",\"module\"]).concat(c)));if(M){if(!(e=J))N&&\"interactive\"===N.readyState||T(document.getElementsByTagName(\"script\"),function(b){if(\"interactive\"===b.readyState)return N=b}),e=N;e&&(b|| (b=e.getAttribute(\"data-requiremodule\")),g=F[e.getAttribute(\"data-requirecontext\")])}(g?g.defQueue:R).push([b,c,d])};define.amd={jQuery:!0};g.exec=function(b){return eval(b)};g(q)}})(this);"
+        };
 
-    var fs = require('fs');
+    function processHtml(fileName, value,/*ConsoleStack*/cs) {
+        var result = "";
+        try {
+            //noinspection JSValidateTypes
+            var /*DependenciesMapper*/ dependencies = new DependenciesMapper();
+            var index = fileName.lastIndexOf('.');
+            var name = fileName.substr(0, index);
 
-    function propertyFileLocale(fileWithoutExtension, length, fileName) {
-        if (fileName.substr(0, length)==fileWithoutExtension) {
-            var ext = fileName.lastIndexOf('.');
-            if (ext>length && fileName.substr(ext)==".properties") {
-                return fileName.substr(length+1, ext-length-1);
-            }
+            var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
+            result = parser.parse(new InputStream(value), cs);
+            result = HtmlParser.doRequireModule(result, dependencies);
+        } catch (e) {
+            cs.addError(e);
+            result += "\n\n\n/* \n\n"+e+"\n\n*/\n\n";
         }
-        return null;
+        return result;
     }
 
-    function middleware(configuration) {
-        var rootDir = "", logger, cs, doStaticLoad = true;
+    function processProperties(names, values, cs) {
+        var result = "";
+        try {
+            //noinspection JSValidateTypes
+            var /*DependenciesMapper*/ dependencies = new DependenciesMapper();
+            for (var i = 0; i < names.length; i++) {
+                var name = names[i];
+                result = PropertiesParser.parseProperties(name, new InputStream(values[i]), dependencies, cs, runParameters);
+            }
+            result = PropertiesParser.finishProperties(name, result, dependencies);
+            result = PropertiesParser.doRequireModule(result, dependencies);
+        } catch (e) {
+            cs.addError(e);
+            result += "\n\n\n/* \n\n"+e+"\n\n*/\n\n";
+        }
+        return result;
+    }
+
+
+    function createMiddleware(configuration) {
+        var dir, logger, fs = require('fs');
         if (configuration) {
-            if (configuration.baseDir) rootDir = configuration.baseDir;
+            if (configuration.baseDir) dir = configuration.baseDir;
             if (configuration.logger) logger = configuration.logger;
         }
+
         if (!logger) logger = {log: function (a, b) {
-            console.log(a, b)
+            console.log(a, b);
         }};
-        var runParameters = compile.defaultConfig();
-        cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger);
-        function expressUseCallBack(req, res, next) {
-            var path = req.path, length;
-            if ((length = path.length) > 3 && path.substr(length - 3, 3) == ".js") {
-                var jsFile = rootDir + path;
-                fs.exists(jsFile, function (exists) {
+
+        var cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger),
+            cache = {};
+
+        function parse(res, filePath, fileName) {
+            fs.readFile(filePath, function (err, data) {
+                res.type('js');
+                res.send(processHtml(fileName, data.toString('utf8'), cs));
+            });
+        }
+
+        function loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res) {
+            var file = properties.pop();
+            languages.push(name + file.substr(prefixLength, file.length-prefixLength-11));
+            fs.readFile(filePath + "/" + file, function (err, data) {
+                contents.push(data.toString('utf8'));
+                if (properties.length == 0) {
+                    res.type('js');
+                    res.send(processProperties(languages, contents, cs));
+                } else {
+                    loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res);
+                }
+            });
+        }
+
+        function parseProperties(res, filePath, properties, name, prefixLength) {
+            var languages = [], contents = [];
+            loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res);
+        }
+
+        function middleware(req, res, next) {
+            var path=req.path,
+                length = path.length,
+                t;
+            //console.log('Time: %d', Date.now(), req, res);
+            if (!cache[path] && length>3 && path.substr(length-3,3)==".js") {
+                fs.exists(dir+path, function (exists) {
                     if (exists) {
-                        if (doStaticLoad) {
-                            fs.readFile(jsFile, function (err, data) {
-                                if (err) {
-                                    //todo log error
-                                    console.log(err);
-                                    next();
-                                } else {
-                                    res.set('Content-Type', 'text/javascript');
-                                    res.send(data);
-                                }
-                            });
-                        } else next();
+                        cache[path]=true;
+                        next();
+                    } else if (t=staticJsFiles[path]) {
+                        res.type('js');
+                        res.send(t);
                     } else {
-                        var name = path.substr(0, length - 3);
-                        var fileWithoutExtension = rootDir + name;
-                        var htmlFile = fileWithoutExtension + ".html";
-                        fs.exists(htmlFile, function (exists) {
-                            if (exists) {
-                                fs.readFile(htmlFile, function (err, data) {
-                                    if (err) {
-                                        //todo log error
-                                        console.log(err);
-                                        next();
-                                    } else {
-                                        res.set('Content-Type', 'text/javascript');
-                                        var content = data.toString(runParameters.inputCharset);
-                                        if (content.indexOf('\uFEFF') === 0) {
-                                            content = content.substring(1, data.length);
-                                        }
-                                        res.send(compile.compileHTML(name.substr(1), content, cs, runParameters));
+                        var name = path.substr(1,length-4), fileName = name+'.html', filePath = dir+"/"+fileName;
+                        fs.exists(filePath, function (exists) {
+                            if (!exists) {
+                                var lIO = filePath.lastIndexOf('/'),
+                                    filePrefixNameLength = filePath.length-lIO-6,
+                                    filePrefixName = filePath.substr(lIO+1, filePrefixNameLength);
+
+                                filePath = filePath.substr(0, lIO);
+                                fs.readdir(filePath, function (err, files) {
+                                    var properties = [];
+                                    for (var i = 0; i < files.length; i++) {
+                                        var file = files[i];
+                                        if (file.substr(0, filePrefixNameLength) == filePrefixName) properties.push(file);
                                     }
+
+                                    if (properties.length==0) next();
+                                    else parseProperties(res, filePath, properties, name, filePrefixNameLength)
                                 });
                             } else {
-                                var hasSlash = fileWithoutExtension.lastIndexOf('/'),
-                                    filePath = hasSlash>0 ? fileWithoutExtension.substr(0, hasSlash) : "",
-                                    fileName = hasSlash>=0 ? fileWithoutExtension.substr(hasSlash+1) : fileWithoutExtension;
-                                fs.readdir(filePath, function (err, files) {
-                                    if (err) {
-                                        //todo log error
-                                        console.log(err);
-                                        next();
-                                    } else {
-                                        var filesCount = files.length, fileNameLength = fileName.length, locales = [],
-                                            sname = name.substr(1);
-
-                                        files.forEach(function (file) {
-                                            var locale = propertyFileLocale(fileName, fileNameLength, file);
-                                            if (locale) {
-                                                locales.push(locale);
-                                            }
-                                            if (filesCount--==1) {
-                                                if (locales.length>0) {
-                                                    compile.compileProperties(cs, runParameters, function (nxt, finish) {
-                                                        var li=0;
-                                                        function ili() {
-                                                            var locale = locales[li++];
-                                                            if (!locale) {
-                                                                res.set('Content-Type', 'text/javascript');
-                                                                res.send(finish());
-                                                            } else fs.readFile(filePath+'/'+sname+"_"+locale+".properties", function (err, data) {
-                                                                if (err) {
-                                                                    //todo log error
-                                                                    console.log(err);
-                                                                    next();
-                                                                } else {
-                                                                    var content = data.toString(runParameters.inputCharset);
-                                                                    if (content.indexOf('\uFEFF') === 0) {
-                                                                        content = content.substring(1, data.length);
-                                                                    }
-                                                                    nxt(sname+"_"+locale, content);
-                                                                    ili();
-                                                                }
-                                                            });
-                                                        }
-                                                        ili();
-                                                    });
-                                                } else {
-                                                    next();
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
+                                parse(res, filePath, fileName);
                             }
                         });
                     }
@@ -4449,12 +4454,13 @@ define('webjs-express',['compiler/ConsoleStack', 'compiler/Build'], function (Co
             } else next();
         }
 
-        return expressUseCallBack;
+        return middleware;
     }
 
     return {
-        middleware: middleware
+        middleware: createMiddleware
     }
+
 });
 
 module.exports = requirejs('webjs-express');

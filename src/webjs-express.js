@@ -1,117 +1,121 @@
-define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, compile) {
+define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'compiler/ConsoleStack', 'compiler/Map', 'compiler/InputStream', 'compiler/DependenciesMapper'], function (compile, HtmlParser, PropertiesParser, ConsoleStack, Map, InputStream, DependenciesMapper) {
+    var runParameters = compile.defaultConfig(),
+        staticJsFiles = {
+            /*staticJsFiles*/
+            "/require.js": "replace_require"
+        };
 
-    var fs = require('fs');
+    function processHtml(fileName, value,/*ConsoleStack*/cs) {
+        var result = "";
+        try {
+            //noinspection JSValidateTypes
+            var /*DependenciesMapper*/ dependencies = new DependenciesMapper();
+            var index = fileName.lastIndexOf('.');
+            var name = fileName.substr(0, index);
 
-    function propertyFileLocale(fileWithoutExtension, length, fileName) {
-        if (fileName.substr(0, length)==fileWithoutExtension) {
-            var ext = fileName.lastIndexOf('.');
-            if (ext>length && fileName.substr(ext)==".properties") {
-                return fileName.substr(length+1, ext-length-1);
-            }
+            var /*HtmlParser*/ parser = new HtmlParser(name, dependencies, runParameters);
+            result = parser.parse(new InputStream(value), cs);
+            result = HtmlParser.doRequireModule(result, dependencies);
+        } catch (e) {
+            cs.addError(e);
+            result += "\n\n\n/* \n\n"+e+"\n\n*/\n\n";
         }
-        return null;
+        return result;
     }
 
-    function middleware(configuration) {
-        var rootDir = "", logger, cs, doStaticLoad = true;
+    function processProperties(names, values, cs) {
+        var result = "";
+        try {
+            //noinspection JSValidateTypes
+            var /*DependenciesMapper*/ dependencies = new DependenciesMapper();
+            for (var i = 0; i < names.length; i++) {
+                var name = names[i];
+                result = PropertiesParser.parseProperties(name, new InputStream(values[i]), dependencies, cs, runParameters);
+            }
+            result = PropertiesParser.finishProperties(name, result, dependencies);
+            result = PropertiesParser.doRequireModule(result, dependencies);
+        } catch (e) {
+            cs.addError(e);
+            result += "\n\n\n/* \n\n"+e+"\n\n*/\n\n";
+        }
+        return result;
+    }
+
+
+    function createMiddleware(configuration) {
+        var dir, logger, fs = require('fs');
         if (configuration) {
-            if (configuration.baseDir) rootDir = configuration.baseDir;
+            if (configuration.baseDir) dir = configuration.baseDir;
             if (configuration.logger) logger = configuration.logger;
         }
+
         if (!logger) logger = {log: function (a, b) {
-            console.log(a, b)
+            console.log(a, b);
         }};
-        var runParameters = compile.defaultConfig();
-        cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger);
-        function expressUseCallBack(req, res, next) {
-            var path = req.path, length;
-            if ((length = path.length) > 3 && path.substr(length - 3, 3) == ".js") {
-                var jsFile = rootDir + path;
-                fs.exists(jsFile, function (exists) {
+
+        var cs = new ConsoleStack(/*IOutputStreamCreator*/ null, /*File*/ null, /*String*/ null, /*String*/ null, /*Boolean*/ false, logger),
+            cache = {};
+
+        function parse(res, filePath, fileName) {
+            fs.readFile(filePath, function (err, data) {
+                res.type('js');
+                res.send(processHtml(fileName, data.toString('utf8'), cs));
+            });
+        }
+
+        function loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res) {
+            var file = properties.pop();
+            languages.push(name + file.substr(prefixLength, file.length-prefixLength-11));
+            fs.readFile(filePath + "/" + file, function (err, data) {
+                contents.push(data.toString('utf8'));
+                if (properties.length == 0) {
+                    res.type('js');
+                    res.send(processProperties(languages, contents, cs));
+                } else {
+                    loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res);
+                }
+            });
+        }
+
+        function parseProperties(res, filePath, properties, name, prefixLength) {
+            var languages = [], contents = [];
+            loadPropertyFile(properties, languages, name, prefixLength, filePath, contents, res);
+        }
+
+        function middleware(req, res, next) {
+            var path=req.path,
+                length = path.length,
+                t;
+            //console.log('Time: %d', Date.now(), req, res);
+            if (!cache[path] && length>3 && path.substr(length-3,3)==".js") {
+                fs.exists(dir+path, function (exists) {
                     if (exists) {
-                        if (doStaticLoad) {
-                            fs.readFile(jsFile, function (err, data) {
-                                if (err) {
-                                    //todo log error
-                                    console.log(err);
-                                    next();
-                                } else {
-                                    res.set('Content-Type', 'text/javascript');
-                                    res.send(data);
-                                }
-                            });
-                        } else next();
+                        cache[path]=true;
+                        next();
+                    } else if (t=staticJsFiles[path]) {
+                        res.type('js');
+                        res.send(t);
                     } else {
-                        var name = path.substr(0, length - 3);
-                        var fileWithoutExtension = rootDir + name;
-                        var htmlFile = fileWithoutExtension + ".html";
-                        fs.exists(htmlFile, function (exists) {
-                            if (exists) {
-                                fs.readFile(htmlFile, function (err, data) {
-                                    if (err) {
-                                        //todo log error
-                                        console.log(err);
-                                        next();
-                                    } else {
-                                        res.set('Content-Type', 'text/javascript');
-                                        var content = data.toString(runParameters.inputCharset);
-                                        if (content.indexOf('\uFEFF') === 0) {
-                                            content = content.substring(1, data.length);
-                                        }
-                                        res.send(compile.compileHTML(name.substr(1), content, cs, runParameters));
+                        var name = path.substr(1,length-4), fileName = name+'.html', filePath = dir+"/"+fileName;
+                        fs.exists(filePath, function (exists) {
+                            if (!exists) {
+                                var lIO = filePath.lastIndexOf('/'),
+                                    filePrefixNameLength = filePath.length-lIO-6,
+                                    filePrefixName = filePath.substr(lIO+1, filePrefixNameLength);
+
+                                filePath = filePath.substr(0, lIO);
+                                fs.readdir(filePath, function (err, files) {
+                                    var properties = [];
+                                    for (var i = 0; i < files.length; i++) {
+                                        var file = files[i];
+                                        if (file.substr(0, filePrefixNameLength) == filePrefixName) properties.push(file);
                                     }
+
+                                    if (properties.length==0) next();
+                                    else parseProperties(res, filePath, properties, name, filePrefixNameLength)
                                 });
                             } else {
-                                var hasSlash = fileWithoutExtension.lastIndexOf('/'),
-                                    filePath = hasSlash>0 ? fileWithoutExtension.substr(0, hasSlash) : "",
-                                    fileName = hasSlash>=0 ? fileWithoutExtension.substr(hasSlash+1) : fileWithoutExtension;
-                                fs.readdir(filePath, function (err, files) {
-                                    if (err) {
-                                        //todo log error
-                                        console.log(err);
-                                        next();
-                                    } else {
-                                        var filesCount = files.length, fileNameLength = fileName.length, locales = [],
-                                            sname = name.substr(1);
-
-                                        files.forEach(function (file) {
-                                            var locale = propertyFileLocale(fileName, fileNameLength, file);
-                                            if (locale) {
-                                                locales.push(locale);
-                                            }
-                                            if (filesCount--==1) {
-                                                if (locales.length>0) {
-                                                    compile.compileProperties(cs, runParameters, function (nxt, finish) {
-                                                        var li=0;
-                                                        function ili() {
-                                                            var locale = locales[li++];
-                                                            if (!locale) {
-                                                                res.set('Content-Type', 'text/javascript');
-                                                                res.send(finish());
-                                                            } else fs.readFile(filePath+'/'+sname+"_"+locale+".properties", function (err, data) {
-                                                                if (err) {
-                                                                    //todo log error
-                                                                    console.log(err);
-                                                                    next();
-                                                                } else {
-                                                                    var content = data.toString(runParameters.inputCharset);
-                                                                    if (content.indexOf('\uFEFF') === 0) {
-                                                                        content = content.substring(1, data.length);
-                                                                    }
-                                                                    nxt(sname+"_"+locale, content);
-                                                                    ili();
-                                                                }
-                                                            });
-                                                        }
-                                                        ili();
-                                                    });
-                                                } else {
-                                                    next();
-                                                }
-                                            }
-                                        });
-                                    }
-                                });
+                                parse(res, filePath, fileName);
                             }
                         });
                     }
@@ -119,10 +123,11 @@ define(['compiler/ConsoleStack', 'compiler/Build'], function (ConsoleStack, comp
             } else next();
         }
 
-        return expressUseCallBack;
+        return middleware;
     }
 
     return {
-        middleware: middleware
+        middleware: createMiddleware
     }
+
 });
