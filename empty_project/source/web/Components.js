@@ -438,6 +438,10 @@ define(['web/Listeners'], function (Listeners) {
                 i = 0;
             }
         }
+        var children = instance.getChildren();
+        for (var k = 0; k < children.length; k++) {
+            sync(children[k], ignoringElement, event);
+        }
     }
 
     /**
