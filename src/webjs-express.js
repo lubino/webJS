@@ -2,7 +2,8 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
     var runParameters = compile.defaultConfig(),
         staticJsFiles = {
             /*staticJsFiles*/
-            "/require.js": "replace_require"
+            "/require.js": "replace_require",
+            "/req.js": "replace_require"
         };
 
     function processHtml(fileName, value,/*ConsoleStack*/cs) {
@@ -67,7 +68,7 @@ define(['compiler/Build', 'compiler/HtmlParser', 'compiler/PropertiesParser', 'c
             var file = properties.pop();
             languages.push(name + file.substr(prefixLength, file.length-prefixLength-11));
             fs.readFile(filePath + "/" + file, function (err, data) {
-                contents.push(data.toString('utf8'));
+                if (data) contents.push(data.toString('utf8'));
                 if (properties.length == 0) {
                     res.type('js');
                     res.send(processProperties(languages, contents, cs));

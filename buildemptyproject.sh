@@ -14,6 +14,7 @@ node ../lib/r.js -o name=WebBuild.js out=../empty_project/w.js baseUrl=. optimiz
 #build npm files
 node ../lib/r.js -o name=webjs-express out=../make/webjs-express.js baseUrl=. optimize=none
 node ../lib/include.js ../make/webjs-express.js replace_require ../lib/require.r.js ../make/webjs-express.js
+node ../lib/include.js ../make/webjs-express.js replace_req ../lib/req.r.js ../make/webjs-express.js
 node ../lib/r.js -o name=webjs out=../make/webjs.js baseUrl=. optimize=none
 
 cp -f -R web/* ../empty_project/source/web
