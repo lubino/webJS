@@ -221,7 +221,7 @@ define(['web/Listeners'], function (Listeners) {
                 options = element.options;
             if (selectedIndex >= 0 && selectedIndex < options.length) return options[selectedIndex].value;
             return null;
-        } else {
+        } else if (name != "option") {
             var html = element.innerHTML, acceptHTML = element.getAttribute("insertHTML");
             if (acceptHTML) return html;
             return htmlToText(html);
